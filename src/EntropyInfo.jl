@@ -1,13 +1,13 @@
-module EntropyInfo
+gmodule EntropyInfo
 
 # Import specific functions from StatsBase, NearestNeighbors and, SpecialFunctions
 import StatsBase: median, mean
 import NearestNeighbors: KDTree, knn
 import SpecialFunctions: gamma, digamma
 
-export entropy, conditional_entropy, mutual_information, conditional_mutual_information, normalized_mutual_information, interaction_information, redundancy, unique, synergy, information_quality_ratio, MI2D, CMI2D
+export entropy, conditional_entropy, mutual_information, conditional_mutual_information, normalized_mutual_information, interaction_information, redundancy, unique, synergy, information_quality_ratio
 
-const e = exp(1)
+const e = 2.718281828459045  #
 
 """
     nn1(array::Vector{<:Real}) -> Vector{<:Real}
@@ -45,6 +45,22 @@ function nn1(array::Vector{<:Real})
     return all_dist
 end
 
+"""
+    hist1d(data::AbstractVector, nbins::Int) -> Vector{Int}
+
+Compute a one-dimensional histogram from the given data.
+
+# Arguments
+- `data::AbstractVector`: A vector of numeric values to be binned.
+- `nbins::Int`: The number of bins to divide the range of `data` into.
+
+# Returns
+- `Vector{Int}`: A vector where each element represents the count of data points within the corresponding bin.
+
+# Behavior
+- The function calculates the minimum and maximum values of the input `data`.
+- The range between these values is divided into `nbins` evenly spaced bins, with edges computed using `range`.
+- Each data point is assigned to a bin if it falls within the range of that bin. The bin edges are inclusive on the lower end and exclusive on the upper end, except for the last bin, which is inclusive on both ends to ensure all data points are accounted for."""
 function hist1d(data, nbins)
     min_val, max_val = minimum(data), maximum(data)
     bin_edges = range(min_val, stop=max_val, length=nbins+1)
@@ -60,6 +76,26 @@ function hist1d(data, nbins)
     return counts
 end
 
+"""
+    hist2d(x::AbstractVector, y::AbstractVector, nbins::Int) -> Matrix{Int}
+
+Compute a two-dimensional histogram from the given `x` and `y` data.
+
+# Arguments
+- `x::AbstractVector`: A vector of numeric values representing the first dimension.
+- `y::AbstractVector`: A vector of numeric values representing the second dimension. Must be the same length as `x`.
+- `nbins::Int`: The number of bins for both dimensions (same number of bins is used for x and y).
+
+# Returns
+- `Matrix{Int}`: A 2D matrix where each element represents the count of data points within the corresponding 2D bin.
+
+# Behavior
+- The function calculates the minimum and maximum values for `x` and `y`.
+- It defines `nbins` evenly spaced bins for each dimension using `range`.
+- For each data point `(x[k], y[k])`, the function determines the appropriate bin indices `(i, j)` and increments the corresponding entry in the histogram matrix.
+- Points outside the range of the bins are ignored.
+
+"""
 function hist2d(x, y, nbins)
     # Find the minimum and maximum for each dimension
     min_x, max_x = minimum(x), maximum(x)
@@ -86,6 +122,27 @@ function hist2d(x, y, nbins)
     return counts
 end
 
+
+"""
+    hist3d(x::AbstractVector, y::AbstractVector, z::AbstractVector, nbins::Int) -> Array{Int, 3}
+
+Compute a three-dimensional histogram from the given `x`, `y`, and `z` data.
+
+# Arguments
+- `x::AbstractVector`: A vector of numeric values representing the first dimension.
+- `y::AbstractVector`: A vector of numeric values representing the second dimension. Must be the same length as `x`.
+- `z::AbstractVector`: A vector of numeric values representing the third dimension. Must be the same length as `x` and `y`.
+- `nbins::Int`: The number of bins for all three dimensions (same number of bins is used for `x`, `y`, and `z`).
+
+# Returns
+- `Array{Int, 3}`: A 3D array where each element represents the count of data points within the corresponding 3D bin.
+
+# Behavior
+- The function calculates the minimum and maximum values for `x`, `y`, and `z`.
+- It defines `nbins` evenly spaced bins for each dimension using `range`.
+- For each data point `(x[k], y[k], z[k])`, the function determines the appropriate bin indices `(i, j, l)` and increments the corresponding entry in the histogram array.
+- Points outside the range of the bins are ignored.
+"""
 function hist3d(x, y, z, nbins)
     # Find min and max for each dimension
     min_x, max_x = minimum(x), maximum(x)
@@ -114,6 +171,33 @@ function hist3d(x, y, z, nbins)
     end
     return counts
 end
+
+
+"""
+    entropy_hist(X::Matrix{<:Real}; nbins::Int = 10, dim::Int = 1, verbose::Bool = false) -> Real
+
+Compute the entropy of a dataset using a histogram-based method.
+
+# Arguments
+- `X::Matrix{<:Real}`: A matrix where each column represents a data point and each row represents a dimension.
+- `nbins::Int = 10` (optional): The number of bins to use for the histogram. Defaults to 10.
+- `dim::Int = 1` (optional): Indicates whether the data is organized in rows (`dim = 1`) or columns (`dim = 2`). Defaults to 1 (data in rows).
+- `verbose::Bool = false` (optional): If `true`, prints information about the dataset (number of points, dimensions, etc.). Defaults to `false`.
+
+# Returns
+- `Real`: The computed entropy of the dataset.
+
+# Behavior
+- The function computes the entropy of the dataset based on the histogram of the data:
+  - If `dim = 1`, the matrix is transposed to organize data points as columns.
+  - The function supports up to 3 dimensions (rows) for the dataset; an error is raised for higher dimensions.
+  - Depending on the dimensionality:
+    - For 1D data, the function uses `hist1d`.
+    - For 2D data, it uses `hist2d`.
+    - For 3D data, it uses `hist3d`.
+- The histogram counts are normalized to obtain a probability distribution.
+- The entropy is computed as: H = -Sum(p_i log(p_i) ), where p_i is the probability of each bin.
+"""
 
 function entropy_hist(mat_::Matrix{<:Real}; nbins::Int = 10, dim::Int = 1, verbose::Bool = false)::Real
     if dim == 1
@@ -150,6 +234,23 @@ function entropy_hist(mat_::Matrix{<:Real}; nbins::Int = 10, dim::Int = 1, verbo
     return -ent
 end
 
+"""
+    entropy_knn(X::Matrix{<:Real}; k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1) -> Real
+
+Estimate the entropy of a dataset using the k-nearest neighbors (k-NN) method.
+
+# Arguments
+- `X::Matrix{<:Real}`: A matrix where each column represents a data point and each row represents a dimension.
+- `k::Int = 3` (optional): The number of nearest neighbors to consider. Defaults to 3.
+- `base::Real = e` (optional): The logarithmic base for entropy computation. Defaults to the natural logarithm (`e`).
+- `verbose::Bool = false` (optional): If `true`, prints information about the dataset (number of points, dimensions, and base). Defaults to `false`.
+- `degenerate::Bool = false` (optional): If `true`, adds a small noise term to distances to handle degenerate cases. Defaults to `false`.
+- `dim::Int = 1` (optional): Indicates whether the data is organized in rows (`dim = 1`) or columns (`dim = 2`). Defaults to 1 (data in rows).
+
+# Returns
+- `Real`: The estimated entropy of the dataset.
+
+"""
 function entropy_knn(mat_::Matrix{<:Real}; k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
     if dim == 1
         mat_ = Matrix{Float64}(transpose(mat_))
@@ -180,6 +281,24 @@ function entropy_knn(mat_::Matrix{<:Real}; k::Int = 3, base::Real = e, verbose::
     return ent*log(base, e)
 end
 
+
+"""
+    entropy_inv(X::Matrix{<:Real}; k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1) -> Real
+
+Estimate the entropy of a dataset using the invariant method.
+
+# Arguments
+- `X::Matrix{<:Real}`: A matrix where each column represents a data point and each row represents a dimension.
+- `k::Int = 3` (optional): The number of nearest neighbors to consider. Defaults to 3.
+- `base::Real = e` (optional): The logarithmic base for entropy computation. Defaults to the natural logarithm (`e`).
+- `verbose::Bool = false` (optional): If `true`, prints information about the dataset (number of points, dimensions, and base). Defaults to `false`.
+- `degenerate::Bool = false` (optional): If `true`, adds a small noise term to distances to handle degenerate cases. Defaults to `false`.
+- `dim::Int = 1` (optional): Indicates whether the data is organized in rows (`dim = 1`) or columns (`dim = 2`). Defaults to 1 (data in rows).
+
+# Returns
+- `Real`: The estimated entropy of the dataset.
+
+"""
 function entropy_inv(mat_::Matrix{<:Real}; k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
     if dim == 1
         mat_ = Matrix{Float64}(transpose(mat_))
@@ -216,29 +335,53 @@ function entropy_inv(mat_::Matrix{<:Real}; k::Int = 3, base::Real = e, verbose::
     return ent*log(base, e)
 end
 
-"""
-    entropy(mat_::Matrix{<:Real}; k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1) -> Real
 
-Estimate the entropy of a dataset using the k-nearest neighbors method.
+"""
+    entropy(X::Matrix{<:Real}; method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1) -> Real
+
+Compute the entropy of a dataset using one of several methods.
 
 # Arguments
-- `mat_::Matrix{<:Real}`: Input matrix where each column represents a sample, and rows represent variables.
-- `k::Int`: Number of neighbors for k-NN entropy estimation. Default is `3`.
-- `nbins::Int`: Number of bins for histogram entropy estimation. Default is `10`.
-- `base::Real`: Logarithmic base for entropy calculation. Default is `e` (natural logarithm).
-- `verbose::Bool`: If `true`, print additional information. Default is `false`.
-- `degenerate::Bool`: If `true`, adds noise to avoid extreme negative distances in degenerate cases. Default is `false`.
-- `dim::Int`: If `1`, treat rows as samples and columns as variables (transpose the matrix). Default is `1`.
+- `X::Vector or Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension.
+- `method::String = "inv"` (optional): The method to use for entropy computation. Options are:
+  - `"knn"`: k-Nearest Neighbors (k-NN) based entropy estimation.
+  - `"histogram"`: Histogram-based entropy estimation.
+  - `"inv"`: Invariant entropy estimation (default).
+- `nbins::Int = 10` (optional): The number of bins for the histogram method. Ignored for other methods. Defaults to 10.
+- `k::Int = 3` (optional): The number of neighbors for the k-NN or invariant method. Ignored for the histogram method. Defaults to 3.
+- `base::Real = e` (optional): The logarithmic base for entropy computation. Defaults to the natural logarithm (`e`).
+- `verbose::Bool = false` (optional): If `true`, prints additional information about the dataset and computation process. Defaults to `false`.
+- `degenerate::Bool = false` (optional): If `true`, adds noise to distances for the k-NN or invariant method to handle degenerate cases. Ignored for the histogram method. Defaults to `false`.
+- `dim::Int = 1` (optional): Indicates whether the data is organized in rows (`dim = 1`) or columns (`dim = 2`). Defaults to 1 (data in rows).
 
 # Returns
-- `Real`: The estimated entropy of the dataset.
+- `Real`: The computed entropy of the dataset.
+
+# Behavior
+- The function chooses the entropy estimation method based on the `method` argument:
+  1. **k-NN Method** (`method = "knn"`):
+     - Estimates entropy based on nearest-neighbor distances.
+  2. **Histogram Method** (`method = "histogram"`):
+     - Estimates entropy using a histogram of the data.
+  3. **Invariant Method** (`method = "inv"`):
+     - Estimates entropy with invariant scaling properties using nearest neighbors.
+- The appropriate entropy function (`entropy_knn`, `entropy_hist`, or `entropy_inv`) is called based on the specified method.
 
 # Example
-```julia
-entropy(rand(100), k=5)
-entropy(rand(100), nbins=10, method="histogram")
-```
-""" 
+# Using k-NN method
+data = rand(1, 100)  # 100 points in 1 dimension
+h_knn = entropy(data, method="knn", k=5, verbose=true)
+println("Entropy (k-NN): $h_knn")
+
+# Using histogram method
+data = rand(100)  # 100 points in 1 dimension
+h_hist = entropy(data, method="histogram", nbins=10)
+println("Entropy (Histogram): $h_hist")
+
+# Using invariant method
+h_inv = entropy(data, method="inv", k=3)
+println("Entropy (Invariant): $h_inv")
+"""
 function entropy(mat_::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
     if method == "knn"
         return entropy_knn(mat_, k=k, verbose=verbose, degenerate=degenerate, base=base, dim=dim)
@@ -251,27 +394,7 @@ function entropy(mat_::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k
     end
 end
 
-"""
-    entropy(array::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
 
-Estimate the entropy of a dataset using the k-nearest neighbors method.
-
-# Arguments
-- `array::Vector{<:Real}`: Input Vector containing the sample variables.
-- `k::Int`: Number of neighbors for k-NN entropy estimation. Default is `3`.
-- `base::Real`: Logarithmic base for entropy calculation. Default is `e` (natural logarithm).
-- `verbose::Bool`: If `true`, print additional information. Default is `false`.
-- `degenerate::Bool`: If `true`, adds noise to avoid extreme negative distances in degenerate cases. Default is `false`.
-- `dim::Int`: If `1`, treat rows as samples and columns as variables (transpose the matrix). Default is `1`.
-
-# Returns
-- `Real`: The estimated entropy of the dataset.
-
-# Example
-```julia
-entropy(rand(100), k=5)
-```
-"""
 function entropy(array::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
     mat_ = reshape(array, length(array), 1)
     return entropy(mat_, k=k, verbose=verbose, degenerate=degenerate, base=base, dim=dim, method=method, nbins=nbins)
@@ -279,23 +402,48 @@ end
 
 
 """
-    conditional_entropy(X::Matrix{<:Real}, Y::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e) -> Real
+    conditional_entropy(X::Matrix{<:Real}, Y::Matrix{<:Real}; method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1) -> Real
 
-Compute the conditional entropy H(X|Y) using k-nearest neighbors.
+Compute the conditional entropy of a dataset X given a conditioning dataset Y as  H(X | Y) = H(X, Y) - H(Y) where:
+  - H(X, Y): Joint entropy of X and Y.
+  - H(Y): Entropy of the conditioning dataset Y.
+
 
 # Arguments
-- `X::Matrix{<:Real}`: The target matrix for which the conditional entropy is calculated.
-- `Y::Matrix{<:Real}`: The conditioning matrix.
-- `k::Int`: Number of neighbors for k-NN entropy estimation. Default is `3`.
-- `base::Real`: Logarithmic base for entropy calculation. Default is `e` (natural logarithm).
+- `X::Vector or Matrix{<:Real}`: A matrix where each column represents a data point and each row represents a dimension for the primary dataset.
+- `Y::Vector or Matrix{<:Real}`: A matrix where each column represents a data point and each row represents a dimension for the conditioning dataset.
+- `method::String = "inv"` (optional): The method to use for entropy computation. Options are:
+  - `"knn"`: k-Nearest Neighbors based entropy estimation.
+  - `"histogram"`: Histogram-based entropy estimation.
+  - `"inv"`: Invariant entropy estimation (default).
+- `nbins::Int = 10` (optional): The number of bins for the histogram method. Ignored for other methods. Defaults to 10.
+- `k::Int = 3` (optional): The number of neighbors for the k-NN or invariant method. Ignored for the histogram method. Defaults to 3.
+- `base::Real = e` (optional): The logarithmic base for entropy computation. Defaults to the natural logarithm (`e`).
+- `verbose::Bool = false` (optional): If `true`, prints additional information about the dataset and computation process. Defaults to `false`.
+- `degenerate::Bool = false` (optional): If `true`, adds noise to distances for the k-NN or invariant method to handle degenerate cases. Ignored for the histogram method. Defaults to `false`.
+- `dim::Int = 1` (optional): Indicates whether the data is organized in rows (`dim = 1`) or columns (`dim = 2`). Defaults to 1 (data in rows).
 
 # Returns
-- `Real`: The estimated conditional entropy H(X|Y).
+- `Real`: The computed conditional entropy H(X | Y).
+
+# Behavior
+- Depending on the specified `method`, the appropriate entropy estimation function (`entropy_knn`, `entropy_hist`, `entropy_inv`) is called.
 
 # Example
-```julia
-conditional_entropy(rand(100, 2), rand(100, 2), k=5)
-```
+x = rand(1, 100)  # 100 points in 1D
+y = rand(1, 100)  # 100 points in 1D
+
+# Using k-NN method
+conditional_ent = conditional_entropy(x, y, method="knn", k=5, verbose=true)
+println("Conditional Entropy (k-NN): $conditional_ent")
+
+# Using histogram method
+conditional_ent = conditional_entropy(x, y, method="histogram", nbins=10)
+println("Conditional Entropy (Histogram): $conditional_ent")
+
+# Using invariant method
+conditional_ent = conditional_entropy(x, y, method="inv", k=3)
+println("Conditional Entropy (Invariant): $conditional_ent")
 """
 function conditional_entropy(mat_::Matrix{<:Real}, cond_::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
     if dim == 1
@@ -322,25 +470,6 @@ function conditional_entropy(mat_::Matrix{<:Real}, cond_::Matrix{<:Real};method:
     return ent_joint_-ent_
 end
 
-"""
-    conditional_entropy(array_::Vector{<:Real}, cond_::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e) -> Real
-
-Compute the conditional entropy H(X|Y) using k-nearest neighbors.
-
-# Arguments
-- `X::Vector{<:Real}`: The target matrix for which the conditional entropy is calculated.
-- `Y::Vector{<:Real}`: The conditioning matrix.
-- `k::Int`: Number of neighbors for k-NN entropy estimation. Default is `3`.
-- `base::Real`: Logarithmic base for entropy calculation. Default is `e` (natural logarithm).
-
-# Returns
-- `Real`: The estimated conditional entropy H(X|Y).
-
-# Example
-```julia
-conditional_entropy(rand(100), rand(100), k=5)
-```
-"""
 function conditional_entropy(array_::Vector{<:Real}, cond_::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real
     array_ = reshape(array_, length(array_), 1)
     cond_ = reshape(cond_, length(cond_), 1)
@@ -350,22 +479,49 @@ end
 
 
 """
-    mutual_information(X::Matrix{<:Real}, Y::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, dim::Int = 1) -> Real
+    mutual_information(X::Matrix{<:Real}, Y::Matrix{<:Real}; method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1) -> Real
 
-Calculate the mutual information I(X; Y) between two matrices X and Y using k-nearest neighbors.
+Compute the mutual information between two datasets as I(X; Y) = H(X) + H(Y) - H(X, Y)
+  where:
+  - H(X): Entropy of the first dataset X.
+  - H(Y): Entropy of the second dataset Y.
+  - H(X, Y): Joint entropy of X and Y.
 
 # Arguments
-- `X::Matrix{<:Real}`: The first matrix (set of variables).
-- `Y::Matrix{<:Real}`: The second matrix (set of variables).
-- `k::Int`: Number of neighbors for k-NN mutual information estimation. Default is `3`.
-- `base::Real`: Logarithmic base for mutual information calculation. Default is `e` (natural logarithm).
+- X::Vector or Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the first dataset.
+- Y::Vector or Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the second dataset.
+- `method::String = "inv"` (optional): The method to use for entropy computation. Options are:
+  - `"knn"`: k-Nearest Neighbors based entropy estimation.
+  - `"histogram"`: Histogram-based entropy estimation.
+  - `"inv"`: Invariant entropy estimation (default).
+- `nbins::Int = 10` (optional): The number of bins for the histogram method. Ignored for other methods. Defaults to 10.
+- `k::Int = 3` (optional): The number of neighbors for the k-NN or invariant method. Ignored for the histogram method. Defaults to 3.
+- `base::Real = e` (optional): The logarithmic base for entropy computation. Defaults to the natural logarithm (`e`).
+- `verbose::Bool = false` (optional): If `true`, prints additional information about the datasets and computation process. Defaults to `false`.
+- `degenerate::Bool = false` (optional): If `true`, adds noise to distances for the k-NN or invariant method to handle degenerate cases. Ignored for the histogram method. Defaults to `false`.
+- `dim::Int = 1` (optional): Indicates whether the data is organized in rows (`dim = 1`) or columns (`dim = 2`). Defaults to 1 (data in rows).
 
 # Returns
-- `Real`: The estimated mutual information I(X; Y).
+- `Real`: The computed mutual information I(X; Y) between the datasets X and Y.
+
+# Behavior
+- Depending on the specified `method`, the appropriate entropy estimation function (`entropy_knn`, `entropy_hist`, `entropy_inv`) is called.
 
 # Example
-```julia
-mutual_information(rand(100, 2), rand(100, 2), k=5)
+x = rand(1, 100)  # 100 points in 1D
+y = rand(1, 100)  # 100 points in 1D
+
+# Using histogram kNN method
+mi = mutual_information(x, y, method="knn", k=5, verbose=true)
+println("Mutual Information (k-NN): $mi")
+
+# Using histogram method
+mi = mutual_information(x, y, method="histogram", nbins=10)
+println("Mutual Information (Histogram): $mi")
+
+# Using invariant method
+mi = mutual_information(x, y, method="inv", k=3)
+println("Mutual Information (Invariant): $mi")
 """
 function mutual_information(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
     if dim == 1
@@ -393,52 +549,61 @@ function mutual_information(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real};method:
     return ent_1+ent_2-ent_12
 end
 
-"""
-    mutual_information(array_1::Vector{<:Real}, array_2::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e) -> Real
-
-Calculate the mutual information I(X; Y) between two vectors X and Y using k-nearest neighbors.
-
-# Arguments
-- `X::Matrix{<:Real}`: The first matrix (set of variables).
-- `Y::Matrix{<:Real}`: The second matrix (set of variables).
-- `k::Int`: Number of neighbors for k-NN mutual information estimation. Default is `3`.
-- `base::Real`: Logarithmic base for mutual information calculation. Default is `e` (natural logarithm).
-
-# Returns
-- `Real`: The estimated mutual information I(X; Y).
-
-# Example
-```julia
-mutual_information(rand(100), rand(100), k=5)
-```
-"""
 function mutual_information(array_1::Vector{<:Real}, array_2::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real
     mat_1 = reshape(array_1, length(array_1), 1)
     mat_2 = reshape(array_2, length(array_2), 1)
     return mutual_information(mat_1, mat_2, method=method, nbins=nbins, k=k, verbose=verbose, degenerate=degenerate, base=base)
 end
                                 
+
+
 """
-    conditional_mutual_information(X::Matrix{<:Real}, Y::Matrix{<:Real}, Z::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e) -> Real
+    conditional_mutual_information(X::Matrix{<:Real}, Y::Matrix{<:Real}, Z::Matrix{<:Real}; method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1) -> Real
 
-Calculate the conditional mutual information (CMI) between X and Y, conditioned on Z.
+Compute the conditional mutual information (CMI) between two datasets given a third conditioning dataset as   I(X; Y | Z) = H(X, Z) + H(Y, Z) - H(X, Y, Z) - H(Z), where:
+  - H(Z): Entropy of the conditioning dataset Z.
+  - H(X, Z): Joint entropy of X and Z.
+  - H(Y, Z): Joint entropy of Y and Z.
+  - H(X, Y, Z): Joint entropy of X, y and Z.
 
-The conditional mutual information I(X; Y | Z) quantifies the amount of information shared between X and Y, given the knowledge of Z. It helps in understanding dependencies between variables while controlling for a third variable.
 
 # Arguments
-- `X::Matrix{<:Real}`: A matrix where each column represents a sample and each row represents a variable from the first set.
-- `Y::Matrix{<:Real}`: A matrix where each column represents a sample and each row represents a variable from the second set.
-- `Z::Matrix{<:Real}`: A matrix representing the conditioning set of variables.
-- `k::Int`: Number of neighbors for k-NN estimation. Default is `3`.
-- `base::Real`: Logarithmic base for the mutual information calculation. Default is `e`.
+- X::Vector or Matrix{<:Real}`: A matrix where each column represents a data point and each row represents a dimension for the first dataset.
+- Y::Vector or Matrix{<:Real}`: A matrix where each column represents a data point and each row represents a dimension for the second dataset.
+- Z::Vector or Matrix{<:Real}`: A matrix where each column represents a data point and each row represents a dimension for the conditioning dataset.
+- `method::String = "inv"` (optional): The method to use for entropy computation. Options are:
+  - `"knn"`: k-Nearest Neighbors based entropy estimation.
+  - `"histogram"`: Histogram-based entropy estimation.
+  - `"inv"`: Invariant entropy estimation (default).
+- `nbins::Int = 10` (optional): The number of bins for the histogram method. Ignored for other methods. Defaults to 10.
+- `k::Int = 3` (optional): The number of neighbors for the k-NN or invariant method. Ignored for the histogram method. Defaults to 3.
+- `base::Real = e` (optional): The logarithmic base for entropy computation. Defaults to the natural logarithm (`e`).
+- `verbose::Bool = false` (optional): If `true`, prints additional information about the datasets and computation process. Defaults to `false`.
+- `degenerate::Bool = false` (optional): If `true`, adds noise to distances for the k-NN or invariant method to handle degenerate cases. Ignored for the histogram method. Defaults to `false`.
+- `dim::Int = 1` (optional): Indicates whether the data is organized in rows (`dim = 1`) or columns (`dim = 2`). Defaults to 1 (data in rows).
 
 # Returns
-- `Real`: The estimated conditional mutual information I(X; Y | Z).
+- `Real`: The computed conditional mutual information I(X; Y | Z)
+
+# Behavior
+- Depending on the specified `method`, the appropriate entropy estimation function (`entropy_knn`, `entropy_hist`, `entropy_inv`) is called.
 
 # Example
-```julia
-conditional_mutual_information(rand(100, 2), rand(100, 2), rand(100, 2), k=5)
-```
+x = rand(1, 100)  # 100 points in 1D
+y = rand(1, 100)  # 100 points in 1D
+z = rand(1, 100)  # 100 points in 1D
+
+# Using k-NN method
+cmi = conditional_mutual_information(x, y, z, method="knn", k=5, verbose=true)
+println("Conditional Mutual Information (k-NN): $cmi")
+
+# Using histogram method
+cmi = conditional_mutual_information(x, y, z, method="histogram", nbins=10)
+println("Conditional Mutual Information (Histogram): $cmi")
+
+# Using invariant method
+cmi = conditional_mutual_information(x, y, z, method="inv", k=3)
+println("Conditional Mutual Information (Invariant): $cmi")
 """
 function conditional_mutual_information(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, cond_::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
     if dim == 1
@@ -470,55 +635,61 @@ function conditional_mutual_information(mat_1::Matrix{<:Real}, mat_2::Matrix{<:R
     return ent_cond1_+ent_cond2_-ent_cond12_-ent_cond_
 end
 
-"""
-    conditional_mutual_information(X::Vector{<:Real}, Y::Vector{<:Real}, Z::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e) -> Real
-
-Calculate the conditional mutual information (CMI) between X and Y, conditioned on Z.
-
-The conditional mutual information I(X; Y | Z) quantifies the amount of information shared between X and Y, given the knowledge of Z. It helps in understanding dependencies between variables while controlling for a third variable.
-
-# Arguments
-- `X::Vector{<:Real}`: A matrix where each column represents a sample and each row represents a variable from the first set.
-- `Y::Vector{<:Real}`: A matrix where each column represents a sample and each row represents a variable from the second set.
-- `Z::Vector{<:Real}`: A matrix representing the conditioning set of variables.
-- `k::Int`: Number of neighbors for k-NN estimation. Default is `3`.
-- `base::Real`: Logarithmic base for the mutual information calculation. Default is `e`.
-
-# Returns
-- `Real`: The estimated conditional mutual information I(X; Y | Z).
-
-# Example
-```julia
-conditional_mutual_information(rand(100), rand(100), rand(100), k=5)
-```
-"""
 function conditional_mutual_information(array_1::Vector{<:Real}, array_2::Vector{<:Real}, cond_::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real
     array_1 = reshape(array_1, length(array_1), 1)
     array_2 = reshape(array_2, length(array_2), 1)        
     cond_ = reshape(cond_, length(cond_), 1)
     return conditional_mutual_information(array_1, array_2, cond_, method=method, nbins=nbins, k=k, verbose=verbose, degenerate=degenerate, base=base)
 end
-                                                    
+
+
+
 """
-    normalized_mutual_information(X::Matrix{<:Real}, Y::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e) -> Real
+    normalized_mutual_information(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}; method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1) -> Real
 
-Calculate the normalized mutual information (nMI) between two matrices X and Y using k-nearest neighbors.
+Compute the normalized mutual information (NMI) between two datasets as  NMI(X, Y) = max(0, H(X) + H(Y) - H(X, Y))/(H(X) + H(Y)
+  where:
+  - H(X): Entropy of the first dataset X.
+  - H(Y): Entropy of the second dataset Y`
+  - H(X, Y): Joint entropy of X and Y.
 
-The normalized mutual information (nMI) is a normalized version of mutual information, ensuring that the result lies between 0 and 1, where 0 indicates no shared information and 1 indicates perfect correlation.
 
 # Arguments
-- `X::Matrix{<:Real}`: The first matrix, with samples as columns and features as rows.
-- `Y::Matrix{<:Real}`: The second matrix, structured similarly to `X`.
-- `k::Int`: Number of neighbors for k-NN estimation. Default is `3`.
-- `base::Real`: Logarithmic base for the mutual information calculation. Default is `e`.
+- X::Vector or Matrix{<:Real}`: A matrix where each column represents a data point and each row represents a dimension for the first dataset.
+- Y::Vector or Matrix{<:Real}`: A matrix where each column represents a data point and each row represents a dimension for the second dataset.
+- `method::String = "inv"` (optional): The method to use for entropy computation. Options are:
+  - `"knn"`: k-Nearest Neighbors based entropy estimation.
+  - `"histogram"`: Histogram-based entropy estimation.
+  - `"inv"`: Invariant entropy estimation (default).
+- `nbins::Int = 10` (optional): The number of bins for the histogram method. Ignored for other methods. Defaults to 10.
+- `k::Int = 3` (optional): The number of neighbors for the k-NN or invariant method. Ignored for the histogram method. Defaults to 3.
+- `base::Real = e` (optional): The logarithmic base for entropy computation. Defaults to the natural logarithm (`e`).
+- `verbose::Bool = false` (optional): If `true`, prints additional information about the datasets and computation process. Defaults to `false`.
+- `degenerate::Bool = false` (optional): If `true`, adds noise to distances for the k-NN or invariant method to handle degenerate cases. Ignored for the histogram method. Defaults to `false`.
+- `dim::Int = 1` (optional): Indicates whether the data is organized in rows (`dim = 1`) or columns (`dim = 2`). Defaults to 1 (data in rows).
 
 # Returns
-- `Real`: The normalized mutual information, a value between 0 and 1.
+- `Real`: The normalized mutual information NMI(X, Y) between X and Y.
+  - 0 < NMI < 1, where 0 indicates no shared information and 1 indicates complete mutual information.
+
+# Behavior
+- Depending on the specified `method`, the appropriate entropy estimation function (`entropy_knn`, `entropy_hist`, `entropy_inv`) is called.
 
 # Example
-```julia
-nMI(rand(100, 2), rand(100, 2), k=5)
-```
+x = rand(1, 100)  # 100 points in 1D
+y = rand(1, 100)  # 100 points in 1D
+
+# Using k-NN method
+nmi = normalized_mutual_information(x, y, method="knn", k=5, verbose=true)
+println("Normalized Mutual Information (k-NN): $nmi")
+
+# Using histogram method
+nmi = normalized_mutual_information(x, y, method="histogram", nbins=10)
+println("Normalized Mutual Information (Histogram): $nmi")
+
+# Using invariant method
+nmi = normalized_mutual_information(x, y, method="inv", k=3)
+println("Normalized Mutual Information (Invariant): $nmi")
 """
 function normalized_mutual_information(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
     if dim == 1
@@ -546,52 +717,61 @@ function normalized_mutual_information(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Re
     return max(0, ent_1+ent_2-ent_12)/(ent_1+ent_2)
 end
 
-"""
-    normalized_mutual_information(X::Vector{<:Real}, Y::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e) -> Real
-
-Calculate the normalized mutual information (nMI) between two vectors X and Y using k-nearest neighbors.
-
-The normalized mutual information (nMI) is a normalized version of mutual information, ensuring that the result lies between 0 and 1, where 0 indicates no shared information and 1 indicates perfect correlation.
-
-# Arguments
-- `X::Vector{<:Real}`: The first matrix, with samples as columns and features as rows.
-- `Y::Vector{<:Real}`: The second matrix, structured similarly to `X`.
-- `k::Int`: Number of neighbors for k-NN estimation. Default is `3`.
-- `base::Real`: Logarithmic base for the mutual information calculation. Default is `e`.
-
-# Returns
-- `Real`: The normalized mutual information, a value between 0 and 1.
-
-# Example
-```julia
-nMI(rand(100), rand(100), k=5)
-```
-"""
 function normalized_mutual_information(array_1::Vector{<:Real}, array_2::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real
     array_1 = reshape(array_1, length(array_1), 1)
     array_2 = reshape(array_2, length(array_2), 1)
     return normalized_mutual_information(array_1, array_2, method=method, nbins=nbins, k=k, verbose=verbose, degenerate=degenerate, base=base)
 end
 
+
+
 """
-    interaction_information(X::Matrix{<:Real}; k::Int = 3, base::Real = e) -> Real
+    interaction_information(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real}; method::String = "inv", nbins::Int = 10, k::Int = 3,base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1) -> Real
 
-Calculate the interaction information (II) for a set of variables.
+Compute the interaction information (II) between three datasets as II(X; Y; Z) = H(X) + H(Y) + H(Z) - H(X, Y) - H(X, Z) - H(Y, Z) + H(X, Y, Z)
+  where:
+  - H(X), H(Y), H(Z): Entropies of the individual datasets.
+  - H(X, Y), H(X, Z), H(Y, Z): Pairwise joint entropies.
+  - H(X, Y, Z): Joint entropy of all three datasets.
 
-The interaction information measures the amount of redundancy or synergy among multiple variables. Positive interaction information suggests synergy (mutual dependence) among variables, while negative interaction information indicates redundancy (overlap of information).
 
 # Arguments
-- `X::Matrix{<:Real}`: A matrix where each column represents a sample and each row represents a variable.
-- `k::Int`: Number of neighbors for k-NN estimation. Default is `3`.
-- `base::Real`: Logarithmic base for the calculation. Default is `e`.
+- `X::Vector or Matrix{<:Real}`: A matrix where each column represents a data point and each row represents a dimension for the first dataset.
+- `Y::Vector or Matrix{<:Real}`: A matrix where each column represents a data point and each row represents a dimension for the second dataset.
+- `Z::Vector or Matrix{<:Real}`: A matrix where each column represents a data point and each row represents a dimension for the third dataset.
+- `method::String = "inv"` (optional): The method to use for entropy computation. Options are:
+  - `"knn"`: k-Nearest Neighbors based entropy estimation.
+  - `"histogram"`: Histogram-based entropy estimation.
+  - `"inv"`: Invariant entropy estimation (default).
+- `nbins::Int = 10` (optional): The number of bins for the histogram method. Ignored for other methods. Defaults to 10.
+- `k::Int = 3` (optional): The number of neighbors for the k-NN or invariant method. Ignored for the histogram method. Defaults to 3.
+- `base::Real = e` (optional): The logarithmic base for entropy computation. Defaults to the natural logarithm (`e`).
+- `verbose::Bool = false` (optional): If `true`, prints additional information about the datasets and computation process. Defaults to `false`.
+- `degenerate::Bool = false` (optional): If `true`, adds noise to distances for the k-NN or invariant method to handle degenerate cases. Ignored for the histogram method. Defaults to `false`.
+- `dim::Int = 1` (optional): Indicates whether the data is organized in rows (`dim = 1`) or columns (`dim = 2`). Defaults to 1 (data in rows).
 
 # Returns
-- `Real`: The interaction information between the variables in `X`.
+- `Real`: The computed interaction information II(X; Y; Z) between the datasets X, Y and Z.
+
+# Behavior
+- Depending on the specified `method`, the appropriate entropy estimation function (`entropy_knn`, `entropy_hist`, `entropy_inv`) is called.
 
 # Example
-```julia
-interaction_information(rand(100), rand(100), rand(100), k=5)
-```
+x = rand(1, 100)  # 100 points in 1D
+y = rand(1, 100)  # 100 points in 1D
+z = rand(1, 100)  # 100 points in 1D
+
+# Using k-NN method
+ii = interaction_information(x, y, z, method="knn", k=5, verbose=true)
+println("Interaction Information (k-NN): $ii")
+
+# Using histogram method
+ii = interaction_information(x, y, z, method="histogram", nbins=10)
+println("Interaction Information (Histogram): $ii")
+
+# Using invariant method
+ii = interaction_information(x, y, z, method="inv", k=3)
+println("Interaction Information (Invariant): $ii")
 """
 function interaction_information(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
     if dim == 1
@@ -626,26 +806,6 @@ function interaction_information(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, m
     return ent_1_+ent_2_+ent_3_-ent_12_-ent_13_-ent_23_+ent_123_
 end
 
-"""
-    interaction_information(X::Vector{<:Real}, Y::Vector{<:Real}, Z::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e) -> Real
-
-Calculate the interaction information (II) for a set of variables.
-
-The interaction information measures the amount of redundancy or synergy among multiple variables. Positive interaction information suggests synergy (mutual dependence) among variables, while negative interaction information indicates redundancy (overlap of information).
-
-# Arguments
-- `X::Vector{<:Real}`,`Y::Vector{<:Real}` and`Z::Vector{<:Real}` : The vectors containing the sample variables.
-- `k::Int`: Number of neighbors for k-NN estimation. Default is `3`.
-- `base::Real`: Logarithmic base for the calculation. Default is `e`.
-
-# Returns
-- `Real`: The interaction information between the variables in `X`.
-
-# Example
-```julia
-interaction_information(rand(100), rand(100), rand(100), k=5)
-```
-"""
 function interaction_information(array_1::Vector{<:Real}, array_2::Vector{<:Real}, array_3::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real
     array_1 = reshape(array_1, length(array_1), 1)
     array_2 = reshape(array_2, length(array_2), 1)        
@@ -655,24 +815,47 @@ end
                                                                 
 
 """
-    redundancy(X::Matrix{<:Real}, Y::Matrix{<:Real}, Z::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e) -> Real
+    redundancy(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real}; method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1) -> Real
 
-Calculate the redundancy (Re) between two sets of variables X and Y about the variable Z.
-
-Redundancy measures how much information is shared between two sets of variables. A higher redundancy indicates more overlap in the information provided by X and Y, meaning they share similar information content in Z.
+Compute the redundancy of information shared by two datasets X and Y about a third dataset Z using the mutual information between I(X; Z) and I(Y; Z): R(X, Y; Z) = min(I(X; Z), I(Y; Z))
 
 # Arguments
-- `X::Vector{<:Real}`,`Y::Vector{<:Real}` and`Z::Vector{<:Real}` : The vectors containing the sample variables.
-- `k::Int`: Number of neighbors for k-NN estimation. Default is `3`.
-- `base::Real`: Logarithmic base for the calculation. Default is `e`.
+- `X::Vector or Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the first dataset  X.
+- `Y::Vector or Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the second dataset Y.
+- `Z::Vector or Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the third dataset Z.
+- `method::String = "inv"` (optional): The method to use for mutual information computation. Options are:
+  - `"knn"`: k-Nearest Neighbors based mutual information estimation.
+  - `"histogram"`: Histogram-based mutual information estimation.
+  - `"inv"`: Invariant mutual information estimation (default).
+- `nbins::Int = 10` (optional): The number of bins for the histogram method. Ignored for other methods. Defaults to 10.
+- `k::Int = 3` (optional): The number of neighbors for the k-NN or invariant method. Ignored for the histogram method. Defaults to 3.
+- `base::Real = e` (optional): The logarithmic base for mutual information computation. Defaults to the natural logarithm (`e`).
+- `verbose::Bool = false` (optional): If `true`, prints additional information about the datasets and computation process. Defaults to `false`.
+- `degenerate::Bool = false` (optional): If `true`, adds noise to distances for the k-NN or invariant method to handle degenerate cases. Ignored for the histogram method. Defaults to `false`.
+- `dim::Int = 1` (optional): Indicates whether the data is organized in rows (`dim = 1`) or columns (`dim = 2`). Defaults to 1 (data in rows).
 
 # Returns
-- `Real`: The redundancy, representing the amount of shared information between `X` and `Y`about `Z`.
+- `Real`: The computed redundancy, defined as the minimum of the mutual information between  X and Z, and Y and Z:
+
+# Behavior
+- Depending on the specified `method`, the appropriate mutual information estimation function (`mutual_information`) is called.
 
 # Example
-```julia
-redundancy(rand(100), rand(100), rand(100), k=5)
-```
+x = rand(1, 100)  # 100 points in 1D
+y = rand(1, 100)  # 100 points in 1D
+z = rand(1, 100)  # 100 points in 1D
+
+# Using k-NN method
+redund = redundancy(x, y, z, method="knn", k=5, verbose=true)
+println("Redundancy (k-NN): $redund")
+
+# Using histogram method
+redund = redundancy(x, y, z, method="histogram", nbins=10)
+println("Redundancy (Histogram): $redund")
+
+# Using invariant method
+redund = redundancy(x, y, z, method="inv", k=3)
+println("Redundancy (Invariant): $redund")
 """
 function redundancy(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
     if dim == 1
@@ -702,26 +885,6 @@ function redundancy(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{
     return min(mi_xz, mi_yz)
 end
 
-"""
-    redundancy(X::Matrix{<:Real}, Y::Matrix{<:Real}, Z::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e) -> Real
-
-Calculate the redundancy (Re) between two sets of variables X and Y about the variable Z.
-
-Redundancy measures how much information is shared between two sets of variables. A higher redundancy indicates more overlap in the information provided by X and Y, meaning they share similar information content in Z.
-
-# Arguments
-- `X::Vector{<:Real}`,`Y::Vector{<:Real}` and`Z::Vector{<:Real}` : The vectors containing the sample variables.
-- `k::Int`: Number of neighbors for k-NN estimation. Default is `3`.
-- `base::Real`: Logarithmic base for the calculation. Default is `e`.
-
-# Returns
-- `Real`: The redundancy, representing the amount of shared information between `X` and `Y`about `Z`.
-
-# Example
-```julia
-redundancy(rand(100), rand(100), rand(100), k=5)
-```
-"""
 function redundancy(array_1::Vector{<:Real}, array_2::Vector{<:Real}, array_3::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real
     array_1 = reshape(array_1, length(array_1), 1)
     array_2 = reshape(array_2, length(array_2), 1)
@@ -731,28 +894,51 @@ end
 
 
 """
-    unique(X::Matrix{<:Real}, Y::Matrix{<:Real}, , Z::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e) -> {Real, Real}
+    unique(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real}; method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1) -> Tuple{Real, Real}
 
-Calculate the unique information (Uni) between two sets of variables `X` and `Y` with respect to a target variable `Z`.
-
-The unique information quantifies how much information is uniquely contributed by `X` and `Y` about `Z`, helping to distinguish individual contributions from shared information among variables.
+Compute the unique information that two datasets X and Y contribute individually about a third dataset Z as:
+U(X; Z) = I(X; Z) - R(X, Y; Z)
+U(Y; Z) = I(Y; Z) - R(X, Y; Z)
+where:
+  - R(X, Y; Z) = min(I(X; Z), I(Y; Z)) si the Redundancy of  X and Y about Z.
 
 # Arguments
-- `X::Matrix{<:Real}`: A matrix where columns represent samples and rows represent features.
-- `Y::Matrix{<:Real}`: A matrix structured similarly to `X`.
-- `Z::Matrix{<:Real}`: A matrix structured similarly to `X`.
-- `k::Int`: Number of neighbors for k-NN estimation. Default is `3`.
-- `base::Real`: Logarithmic base for the calculation. Default is `e`.
+- `X::Vector or Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the first dataset X.
+- `Y::Vector or Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the second dataset Y.
+- `Z::Vector or Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the third dataset Z.
+- `method::String = "inv"` (optional): The method to use for mutual information computation. Options are:
+  - `"knn"`: k-Nearest Neighbors based mutual information estimation.
+  - `"histogram"`: Histogram-based mutual information estimation.
+  - `"inv"`: Invariant mutual information estimation (default).
+- `nbins::Int = 10` (optional): The number of bins for the histogram method. Ignored for other methods. Defaults to 10.
+- `k::Int = 3` (optional): The number of neighbors for the k-NN or invariant method. Ignored for the histogram method. Defaults to 3.
+- `base::Real = e` (optional): The logarithmic base for mutual information computation. Defaults to the natural logarithm (`e`).
+- `verbose::Bool = false` (optional): If `true`, prints additional information about the datasets and computation process. Defaults to `false`.
+- `degenerate::Bool = false` (optional): If `true`, adds noise to distances for the k-NN or invariant method to handle degenerate cases. Ignored for the histogram method. Defaults to `false`.
+- `dim::Int = 1` (optional): Indicates whether the data is organized in rows (`dim = 1`) or columns (`dim = 2`). Defaults to 1 (data in rows).
 
 # Returns
-- `{Real, Real}`: A tuple containing two values:
-  - The unique information in `X` about `Z`.
-  - The unique information in `Y` about `Z`.
+- `Tuple{Real, Real}`: A tuple (U(X; Z), U(Y; Z)).
+# Behavior
+- Depending on the specified `method`, the appropriate mutual information estimation function (`mutual_information`) is called.
 
 # Example
-```julia
-unique(rand(100), rand(100), rand(100), k=5)
-```
+x = rand(1, 100)  # 100 points in 1D
+y = rand(1, 100)  # 100 points in 1D
+z = rand(1, 100)  # 100 points in 1D
+
+# Using k-NN method
+unique_x, unique_y = unique(x, y, z, method="knn", k=5, verbose=true)
+println("Unique information (k-NN): U(X; Z) = $unique_x, U(Y; Z) = $unique_y")
+
+# Using histogram method
+unique_x, unique_y = unique(x, y, z, method="histogram", nbins=10)
+println("Unique information (Histogram): U(X; Z) = $unique_x, U(Y; Z) = $unique_y")
+
+# Using invariant method
+unique_x, unique_y = unique(x, y, z, method="inv", k=3)
+println("Unique information (Invariant): U(X; Z) = $unique_x, U(Y; Z) = $unique_y")
+
 """
 function unique(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Tuple{Real, Real}
     if dim == 1
@@ -785,31 +971,6 @@ function unique(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Re
     return uni_x, uni_y
 end
 
-
-"""
-    unique(X::Matrix{<:Real}, Y::Matrix{<:Real}, , Z::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e) -> {Real, Real}
-
-Calculate the unique information (Uni) between two sets of variables `X` and `Y` with respect to a target variable `Z`.
-
-The unique information quantifies how much information is uniquely contributed by `X` and `Y` about `Z`, helping to distinguish individual contributions from shared information among variables.
-
-# Arguments
-- `X::Matrix{<:Real}`: A matrix where columns represent samples and rows represent features.
-- `Y::Matrix{<:Real}`: A matrix structured similarly to `X`.
-- `Z::Matrix{<:Real}`: A matrix structured similarly to `X`.
-- `k::Int`: Number of neighbors for k-NN estimation. Default is `3`.
-- `base::Real`: Logarithmic base for the calculation. Default is `e`.
-
-# Returns
-- `{Real, Real}`: A tuple containing two values:
-  - The unique information in `X` about `Z`.
-  - The unique information in `Y` about `Z`.
-
-# Example
-```julia
-unique(rand(100), rand(100), rand(100), k=5)
-```
-"""
 function unique(array_1::Vector{<:Real}, array_2::Vector{<:Real}, array_3::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Tuple{Real, Real}
     array_1 = reshape(array_1, length(array_1), 1)
     array_2 = reshape(array_2, length(array_2), 1)        
@@ -819,26 +980,56 @@ end
 
 
 """
-    synergy(X::Matrix{<:Real}, Y::Matrix{<:Real}, , Z::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e) -> {Real, Real}
+    synergy(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1) -> Real
 
-Calculate the synergy (SYn) between three sets of variables X, Y and Z.
+Compute the synergy between two dataset sX and Y regarding their shared information about a third dataset Z using the formula:
+  S(X, Y; Z) = I(X, Y; Z) - U(X; Z) - U(Y; Z) - R(X, Y; Z)
+  where:
+  - I(X, Y; Z): Conditional mutual information of X and Y about Z.
+  - U(X; Z): Unique information that X contributes about Z.
+  - U(Y; Z): Unique information that Y contributes about Z.
+  - R(X, Y; Z): Redundancy of X and Y about Z. 
 
-Synergy measures how much information is shared between three sets of variables.
 # Arguments
-- `X::Matrix{<:Real}`: A matrix where columns represent samples and rows represent features.
-- `Y::Matrix{<:Real}`: A matrix structured similarly to `X`.
-- `Z::Matrix{<:Real}`: A matrix structured similarly to `X`.
-- `k::Int`: Number of neighbors for k-NN estimation. Default is `3`.
-- `base::Real`: Logarithmic base for the calculation. Default is `e`.
+- `X:Vector or Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the first dataset (\( X \)).
+- `Y::Vector or Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the second dataset (\( Y \)).
+- `Z::Vector or Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the third dataset (\( Z \)).
+- `method::String = "inv"` (optional): The method to use for mutual and conditional mutual information computation. Options are:
+  - `"knn"`: k-Nearest Neighbors based estimation.
+  - `"histogram"`: Histogram-based estimation.
+  - `"inv"`: Invariant estimation (default).
+- `nbins::Int = 10` (optional): The number of bins for the histogram method. Ignored for other methods. Defaults to 10.
+- `k::Int = 3` (optional): The number of neighbors for the k-NN or invariant method. Ignored for the histogram method. Defaults to 3.
+- `base::Real = e` (optional): The logarithmic base for information computations. Defaults to the natural logarithm (`e`).
+- `verbose::Bool = false` (optional): If `true`, prints additional information about the datasets and computation process. Defaults to `false`.
+- `degenerate::Bool = false` (optional): If `true`, adds noise to distances for the k-NN or invariant method to handle degenerate cases. Ignored for the histogram method. Defaults to `false`.
+- `dim::Int = 1` (optional): Indicates whether the data is organized in rows (`dim = 1`) or columns (`dim = 2`). Defaults to 1 (data in rows).
 
 # Returns
-- `Real`: The synergy, representing the amount of shared information between `X`,  `Y` and `Z`.
+- `Real`: The computed synergy  S(X, Y; Z), representing the additional information that X and Y provide about Z together, beyond their redundancy and unique contributions.
+
+# Behavior
+ - The combined dimensions (rows) of all three datasets must equal 3.
+- Calls `conditional_mutual_information`, `unique`, and `redundancy` functions to compute the respective components.
 
 # Example
-```julia
-synergy(rand(100), rand(100), rand(100), k=5)
-```
+x = rand(1, 100)  # 100 points in 1D
+y = rand(1, 100)  # 100 points in 1D
+z = rand(1, 100)  # 100 points in 1D
+
+# Using k-NN method
+syn = synergy(x, y, z, method="knn", k=5, verbose=true)
+println("Synergy (k-NN): $syn")
+
+# Using histogram method
+syn = synergy(x, y, z, method="histogram", nbins=10)
+println("Synergy (Histogram): $syn")
+
+# Using invariant method
+syn = synergy(x, y, z, method="inv", k=3)
+println("Synergy (Invariant): $syn")
 """
+
 function synergy(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
     if dim == 1
         mat_1 = Matrix{Float64}(transpose(mat_1))
@@ -868,27 +1059,6 @@ function synergy(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:R
     return cmi_xyz-uni_x-uni_y-re_xy_z
 end
 
-"""
-    synergy(X::Vector{<:Real}, Y::Vector{<:Real}, , Z::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e) -> Real
-
-Calculate the synergy (SYn) between three sets of variables X, Y and Z.
-
-Synergy measures how much information is shared between three sets of variables.
-# Arguments
-- `X::Vector{<:Real}`: A matrix where columns represent samples and rows represent features.
-- `Y::Vector{<:Real}`: A matrix structured similarly to `X`.
-- `Z::Vector{<:Real}`: A matrix structured similarly to `X`.
-- `k::Int`: Number of neighbors for k-NN estimation. Default is `3`.
-- `base::Real`: Logarithmic base for the calculation. Default is `e`.
-
-# Returns
-- `Real`: The synegy, representing the amount of shared information between `X`,  `Y` and `Z`.
-
-# Example
-```julia
-synergy(rand(100), rand(100), rand(100), k=5)
-```
-"""
 function synergy(array_1::Vector{<:Real}, array_2::Vector{<:Real}, array_3::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real
     array_1 = reshape(array_1, length(array_1), 1)
     array_2 = reshape(array_2, length(array_2), 1)        
@@ -896,27 +1066,54 @@ function synergy(array_1::Vector{<:Real}, array_2::Vector{<:Real}, array_3::Vect
     return synergy(array_1, array_2, array_3, method=method, nbins=nbins, k=k, base=base, verbose=verbose, degenerate=degenerate)
 end
 
+
 """
-    information_quality_ratio(X::Matrix{<:Real}, Y::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e) -> Real
+    information_quality_ratio(X::Matrix{<:Real}, Y::Matrix{<:Real}; method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1) -> Real
 
-Compute the information quality ratio (IQR) between two variables X and Y.
-
-The information quality ratio (IQR) assesses the usefulness of a variable for classification or prediction. It is often used in decision trees to evaluate the importance of a feature relative to others.
+Compute the Information Quality Ratio (IQR) between two datasets using the formula:
+  IQR(X; Y) = (H(X) + H(Y) - H(X, Y)/H(X)
+  where:
+  - H(X): Entropy of the first dataset (X).
+  - H(Y): Entropy of the second dataset (Y).
+  - H(X, Y): Joint entropy of the two datasets.
 
 # Arguments
-- `X::Matrix{<:Real}`: A matrix representing the feature set, with samples as columns and features as rows.
-- `Y::Matrix{<:Real}`: A matrix representing the target variable(s), structured similarly to `X`.
-- `k::Int`: Number of neighbors for k-NN estimation. Default is `3`.
-- `base::Real`: Logarithmic base for the calculation. Default is `e`.
+- `X::Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the first dataset.
+- `Y::Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the second dataset.
+- `method::String = "inv"` (optional): The method to use for entropy and mutual information computation. Options are:
+  - `"knn"`: k-Nearest Neighbors based estimation.
+  - `"histogram"`: Histogram-based estimation.
+  - `"inv"`: Invariant estimation (default).
+- `nbins::Int = 10` (optional): The number of bins for the histogram method. Ignored for other methods. Defaults to 10.
+- `k::Int = 3` (optional): The number of neighbors for the k-NN or invariant method. Ignored for the histogram method. Defaults to 3.
+- `base::Real = e` (optional): The logarithmic base for entropy computations. Defaults to the natural logarithm (`e`).
+- `verbose::Bool = false` (optional): If `true`, prints additional information about the datasets and computation process. Defaults to `false`.
+- `degenerate::Bool = false` (optional): If `true`, adds noise to distances for the k-NN or invariant method to handle degenerate cases. Ignored for the histogram method. Defaults to `false`.
+- `dim::Int = 1` (optional): Indicates whether the data is organized in rows (`dim = 1`) or columns (`dim = 2`). Defaults to 1 (data in rows).
 
 # Returns
-- `Real`: The information quality ratio, a measure of the utility of the variables in `X` for predicting `Y`.
+- `Real`: The Information Quality Ratio (IQR), defined as:
+
+# Behavior
+- Depending on the specified `method`, the appropriate entropy estimation function (`entropy`) is called.
 
 # Example
-```julia
-information_quality_ratio(rand(100), rand(100), k=5)
-```
+x = rand(1, 100)  # 100 points in 1D
+y = rand(1, 100)  # 100 points in 1D
+
+# Using k-NN method
+iqr = information_quality_ratio(x, y, method="knn", k=5, verbose=true)
+println("Information Quality Ratio (k-NN): $iqr")
+
+# Using histogram method
+iqr = information_quality_ratio(x, y, method="histogram", nbins=10)
+println("Information Quality Ratio (Histogram): $iqr")
+
+# Using invariant method
+iqr = information_quality_ratio(x, y, method="inv", k=3)
+println("Information Quality Ratio (Invariant): $iqr")
 """
+
 function information_quality_ratio(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
     if dim == 1
         mat_1 = Matrix{Float64}(transpose(mat_1))
@@ -943,27 +1140,6 @@ function information_quality_ratio(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real};
     return (ent_1+ent_2-ent_12)/ent_1
 end
 
-"""
-    information_quality_ratio(X::Vector{<:Real}, Y::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e) -> Real
-
-Compute the information quality ratio (IQR) between two variables X and Y.
-
-The information quality ratio (IQR) assesses the usefulness of a variable for classification or prediction. It is often used in decision trees to evaluate the importance of a feature relative to others.
-
-# Arguments
-- `X::Vector{<:Real}`: A matrix representing the feature set, with samples as columns and features as rows.
-- `Y::Vector{<:Real}`: A matrix representing the target variable(s), structured similarly to `X`.
-- `k::Int`: Number of neighbors for k-NN estimation. Default is `3`.
-- `base::Real`: Logarithmic base for the calculation. Default is `e`.
-
-# Returns
-- `Real`: The information quality ratio, a measure of the utility of the variables in `X` for predicting `Y`.
-
-# Example
-```julia
-information_quality_ratio(rand(100), rand(100), k=5)
-```
-"""
 function information_quality_ratio(array_1::Vector{<:Real}, array_2::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real
     array_1 = reshape(array_1, length(array_1), 1)
     array_2 = reshape(array_2, length(array_2), 1)
@@ -973,22 +1149,40 @@ end
 
 
 """
-    MI(mat_1::Matrix{<:Real}; k::Int = 3, base::Real = e) -> Matrix{Real}
+    MI(a::Matrix{<:Real}; k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1) -> Matrix{<:Real}
 
-Calculate the pairwise mutual information between each feature in the input matrix using k-nearest neighbors.
+Compute the mutual information (MI) matrix for all pairs of dimensions in the given dataset using the k-nearest neighbors (k-NN) invariant measure as: I(X_i; X_j) = H(X_i) + H(X_j) - H(X_i, X_j), where H(X_i) is the entropy of dimension i, and H(X_i, X_j) is the joint entropy of dimensions i and j.
+
 
 # Arguments
-- `mat_1::Matrix{<:Real}`: A matrix where each column represents a feature, and each row represents a sample.
-- `k::Int`: Number of neighbors for k-NN estimation of mutual information. Default is `3`.
-- `base::Real`: Logarithmic base for the calculation. Default is `e`.
+- `a::Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension of the dataset.
+- `k::Int = 3` (optional): The number of nearest neighbors to consider for k-NN estimation. Defaults to 3.
+- `base::Real = e` (optional): The logarithmic base for MI computation. Defaults to the natural logarithm (`e`).
+- `verbose::Bool = false` (optional): If `true`, prints additional information about the dataset and computation process. Defaults to `false`.
+- `degenerate::Bool = false` (optional): If `true`, adds noise to distances to handle degenerate cases. Defaults to `false`.
+- `dim::Int = 1` (optional): Specifies whether the data is organized in rows (`dim = 1`) or columns (`dim = 2`). Defaults to 1.
 
 # Returns
-- `Matrix{Real}`: A square matrix containing the estimated mutual information between each pair of features.
+- `Matrix{<:Real}`: A symmetric matrix \( M \), where \( M[i, j] \) represents the mutual information between the \( i \)-th and \( j \)-th dimensions of the dataset.
+
+# Behavior
+- The function computes mutual information for all pairs of dimensions in the dataset using a k-NN-based invariant measure.
+- Steps:
+  1. Normalize each dimension by dividing by its invariant measure (computed using the median distance to nearest neighbors).
+  2. Compute marginal entropy for each dimension using k-NN.
+  3. Compute joint entropy for each pair of dimensions.
+  4. Compute mutual information for each pair
 
 # Example
-```julia
-MI(rand(1000, 5), k=5)
-```
+# Compute MI for a 3-dimensional dataset
+data = rand(3, 100)  # 100 points in 3 dimensions
+mi_matrix = MI(data, k=5, verbose=true)
+println("Mutual Information Matrix:\n$mi_matrix")
+
+# Compute MI for transposed data
+data_t = rand(100, 3)  # Transposed dataset
+mi_matrix = MI(data_t, k=3, dim=2)
+println("Mutual Information Matrix:\n$mi_matrix")
 """
 function MI(a::Matrix{<:Real}; k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Matrix{<:Real}
     if dim == 2
@@ -1088,23 +1282,44 @@ end
 
 
 """
-    CMI(mat_1::Matrix{<:Real}, array_1::array{<:Real}; k::Int = 3, base::Real = e) -> Matrix{Real}
+    CMI(X::Matrix{<:Real}, Z::Vector{<:Real}; base::Real = e, k::Int = 3, verbose::Bool = false, 
+        degenerate::Bool = false, dim::Int = 1) -> Matrix{<:Real}
 
-Calculate the pairwise mutual information between each feature in the input matrix using k-nearest neighbors.
+Compute the conditional mutual information (CMI) matrix for all pairs of dimensions in a dataset a, given a conditioning variable b, using the k-nearest neighbors (k-NN) invariant measure as CMI(X_i; X_j | Z) = H(X_i, Z) + H(X_j, Z) - H(X_i, X_j, Z) - H(Z)
+
 
 # Arguments
-- `mat_1::Matrix{<:Real}`: A matrix where each column represents a feature, and each row represents a sample.
-- `array_1::array{<:Real}`: An array representing the conditional variable.
-- `k::Int`: Number of neighbors for k-NN estimation of mutual information. Default is `3`.
-- `base::Real`: Logarithmic base for the calculation. Default is `e`.
+- `X::Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension of the dataset.
+- `Z::Vector{<:Real}`: A vector representing the conditioning variable.
+- `base::Real = e` (optional): The logarithmic base for CMI computation. Defaults to the natural logarithm (`e`).
+- `k::Int = 3` (optional): The number of nearest neighbors to consider for k-NN estimation. Defaults to 3.
+- `verbose::Bool = false` (optional): If `true`, prints additional information about the dataset and computation process. Defaults to `false`.
+- `degenerate::Bool = false` (optional): If `true`, adds noise to distances to handle degenerate cases. Defaults to `false`.
+- `dim::Int = 1` (optional): Specifies whether the data is organized in rows (`dim = 1`) or columns (`dim = 2`). Defaults to 1.
 
 # Returns
-- `Matrix{Real}`: A square matrix containing the estimated conditional mutual information between each pair of features.
+- `Matrix{<:Real}`: A symmetric matrix C, where C[i, j] represents the conditional mutual information between the i-th and j-th dimensions of X, conditioned on Z.
+
+# Behavior
+- The function computes CMI for all pairs of dimensions in X, conditioned on Z, using a k-NN-based invariant measure.
+- Steps:
+  1. Normalize each dimension of X and Z using their respective invariant measures.
+  2. Compute marginal entropy for each dimension of X.
+  3. Compute joint entropy for each dimension of X and Z.
+  4. Compute triple joint entropy for all pairs of dimensions in X, conditioned on Z.
+  5. Calculate conditional mutual information.
 
 # Example
-```julia
-CMI(rand(1000, 5), rand(1000), k=5)
-```
+# Compute CMI for a 3-dimensional dataset
+data = rand(3, 100)  # 100 points in 3 dimensions
+conditioning_var = rand(100)  # Conditioning variable
+cmi_matrix = CMI(data, conditioning_var, k=5, verbose=true)
+println("Conditional Mutual Information Matrix:\n$cmi_matrix")
+
+# Compute CMI for transposed data
+data_t = rand(100, 3)  # Transposed dataset
+cmi_matrix = CMI(data_t, conditioning_var, k=3, dim=2)
+println("Conditional Mutual Information Matrix:\n$cmi_matrix")
 """
 function CMI(a::Matrix{<:Real}, b::Vector{<:Real}; base::Real = e, k::Int = 3, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Matrix{<:Real}
     if dim == 2
@@ -1250,6 +1465,7 @@ function CMI(a::Matrix{<:Real}, b::Matrix{<:Real}; base::Real = e, k::Int = 3, v
     end
     return CMI(a, vec(b), base=base, k=k, verbose=verbose, degenerate=degenerate, dim=dim)
 end
+
 
 """
 Type : ?entropy
