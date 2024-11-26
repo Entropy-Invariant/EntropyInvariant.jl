@@ -1,4 +1,4 @@
-gmodule EntropyInfo
+module EntropyInfo
 
 # Import specific functions from StatsBase, NearestNeighbors and, SpecialFunctions
 import StatsBase: median, mean
@@ -199,7 +199,7 @@ Compute the entropy of a dataset using a histogram-based method.
 - The entropy is computed as: H = -Sum(p_i log(p_i) ), where p_i is the probability of each bin.
 """
 
-function entropy_hist(mat_::Matrix{<:Real}; nbins::Int = 10, dim::Int = 1, verbose::Bool = false)::Real
+function entropy_hist(mat_::Matrix{<:Real}; nbins::Int = 10, dim::Int = 1, base::Real = e, verbose::Bool = false)::Real
     if dim == 1
         mat_ = Matrix{Float64}(transpose(mat_))
     end
@@ -370,17 +370,14 @@ Compute the entropy of a dataset using one of several methods.
 # Example
 # Using k-NN method
 data = rand(1, 100)  # 100 points in 1 dimension
-h_knn = entropy(data, method="knn", k=5, verbose=true)
-println("Entropy (k-NN): $h_knn")
+println("Entropy (k-NN): ", entropy(data, method="knn", k=5, verbose=true))
 
 # Using histogram method
 data = rand(100)  # 100 points in 1 dimension
-h_hist = entropy(data, method="histogram", nbins=10)
-println("Entropy (Histogram): $h_hist")
+println("Entropy (Histogram): ", entropy(data, method="histogram", nbins=10) )
 
 # Using invariant method
-h_inv = entropy(data, method="inv", k=3)
-println("Entropy (Invariant): $h_inv")
+println("Entropy (Invariant): ", entropy(data, method="inv", k=3))
 """
 function entropy(mat_::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
     if method == "knn"
@@ -435,15 +432,12 @@ y = rand(1, 100)  # 100 points in 1D
 
 # Using k-NN method
 conditional_ent = conditional_entropy(x, y, method="knn", k=5, verbose=true)
-println("Conditional Entropy (k-NN): $conditional_ent")
 
 # Using histogram method
 conditional_ent = conditional_entropy(x, y, method="histogram", nbins=10)
-println("Conditional Entropy (Histogram): $conditional_ent")
 
 # Using invariant method
 conditional_ent = conditional_entropy(x, y, method="inv", k=3)
-println("Conditional Entropy (Invariant): $conditional_ent")
 """
 function conditional_entropy(mat_::Matrix{<:Real}, cond_::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
     if dim == 1
@@ -513,15 +507,12 @@ y = rand(1, 100)  # 100 points in 1D
 
 # Using histogram kNN method
 mi = mutual_information(x, y, method="knn", k=5, verbose=true)
-println("Mutual Information (k-NN): $mi")
 
 # Using histogram method
 mi = mutual_information(x, y, method="histogram", nbins=10)
-println("Mutual Information (Histogram): $mi")
 
 # Using invariant method
 mi = mutual_information(x, y, method="inv", k=3)
-println("Mutual Information (Invariant): $mi")
 """
 function mutual_information(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
     if dim == 1
@@ -595,15 +586,12 @@ z = rand(1, 100)  # 100 points in 1D
 
 # Using k-NN method
 cmi = conditional_mutual_information(x, y, z, method="knn", k=5, verbose=true)
-println("Conditional Mutual Information (k-NN): $cmi")
 
 # Using histogram method
 cmi = conditional_mutual_information(x, y, z, method="histogram", nbins=10)
-println("Conditional Mutual Information (Histogram): $cmi")
 
 # Using invariant method
 cmi = conditional_mutual_information(x, y, z, method="inv", k=3)
-println("Conditional Mutual Information (Invariant): $cmi")
 """
 function conditional_mutual_information(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, cond_::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
     if dim == 1
@@ -681,15 +669,12 @@ y = rand(1, 100)  # 100 points in 1D
 
 # Using k-NN method
 nmi = normalized_mutual_information(x, y, method="knn", k=5, verbose=true)
-println("Normalized Mutual Information (k-NN): $nmi")
 
 # Using histogram method
 nmi = normalized_mutual_information(x, y, method="histogram", nbins=10)
-println("Normalized Mutual Information (Histogram): $nmi")
 
 # Using invariant method
 nmi = normalized_mutual_information(x, y, method="inv", k=3)
-println("Normalized Mutual Information (Invariant): $nmi")
 """
 function normalized_mutual_information(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
     if dim == 1
@@ -763,15 +748,12 @@ z = rand(1, 100)  # 100 points in 1D
 
 # Using k-NN method
 ii = interaction_information(x, y, z, method="knn", k=5, verbose=true)
-println("Interaction Information (k-NN): $ii")
 
 # Using histogram method
 ii = interaction_information(x, y, z, method="histogram", nbins=10)
-println("Interaction Information (Histogram): $ii")
 
 # Using invariant method
 ii = interaction_information(x, y, z, method="inv", k=3)
-println("Interaction Information (Invariant): $ii")
 """
 function interaction_information(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
     if dim == 1
@@ -847,15 +829,12 @@ z = rand(1, 100)  # 100 points in 1D
 
 # Using k-NN method
 redund = redundancy(x, y, z, method="knn", k=5, verbose=true)
-println("Redundancy (k-NN): $redund")
 
 # Using histogram method
 redund = redundancy(x, y, z, method="histogram", nbins=10)
-println("Redundancy (Histogram): $redund")
 
 # Using invariant method
 redund = redundancy(x, y, z, method="inv", k=3)
-println("Redundancy (Invariant): $redund")
 """
 function redundancy(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
     if dim == 1
@@ -929,15 +908,12 @@ z = rand(1, 100)  # 100 points in 1D
 
 # Using k-NN method
 unique_x, unique_y = unique(x, y, z, method="knn", k=5, verbose=true)
-println("Unique information (k-NN): U(X; Z) = $unique_x, U(Y; Z) = $unique_y")
 
 # Using histogram method
 unique_x, unique_y = unique(x, y, z, method="histogram", nbins=10)
-println("Unique information (Histogram): U(X; Z) = $unique_x, U(Y; Z) = $unique_y")
 
 # Using invariant method
 unique_x, unique_y = unique(x, y, z, method="inv", k=3)
-println("Unique information (Invariant): U(X; Z) = $unique_x, U(Y; Z) = $unique_y")
 
 """
 function unique(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Tuple{Real, Real}
@@ -991,9 +967,9 @@ Compute the synergy between two dataset sX and Y regarding their shared informat
   - R(X, Y; Z): Redundancy of X and Y about Z. 
 
 # Arguments
-- `X:Vector or Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the first dataset (\( X \)).
-- `Y::Vector or Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the second dataset (\( Y \)).
-- `Z::Vector or Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the third dataset (\( Z \)).
+- `X:Vector or Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the first dataset ( X ).
+- `Y::Vector or Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the second dataset ( Y ).
+- `Z::Vector or Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the third dataset ( Z ).
 - `method::String = "inv"` (optional): The method to use for mutual and conditional mutual information computation. Options are:
   - `"knn"`: k-Nearest Neighbors based estimation.
   - `"histogram"`: Histogram-based estimation.
@@ -1019,15 +995,12 @@ z = rand(1, 100)  # 100 points in 1D
 
 # Using k-NN method
 syn = synergy(x, y, z, method="knn", k=5, verbose=true)
-println("Synergy (k-NN): $syn")
 
 # Using histogram method
 syn = synergy(x, y, z, method="histogram", nbins=10)
-println("Synergy (Histogram): $syn")
 
 # Using invariant method
 syn = synergy(x, y, z, method="inv", k=3)
-println("Synergy (Invariant): $syn")
 """
 
 function synergy(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
@@ -1103,15 +1076,12 @@ y = rand(1, 100)  # 100 points in 1D
 
 # Using k-NN method
 iqr = information_quality_ratio(x, y, method="knn", k=5, verbose=true)
-println("Information Quality Ratio (k-NN): $iqr")
 
 # Using histogram method
 iqr = information_quality_ratio(x, y, method="histogram", nbins=10)
-println("Information Quality Ratio (Histogram): $iqr")
 
 # Using invariant method
 iqr = information_quality_ratio(x, y, method="inv", k=3)
-println("Information Quality Ratio (Invariant): $iqr")
 """
 
 function information_quality_ratio(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
@@ -1163,7 +1133,7 @@ Compute the mutual information (MI) matrix for all pairs of dimensions in the gi
 - `dim::Int = 1` (optional): Specifies whether the data is organized in rows (`dim = 1`) or columns (`dim = 2`). Defaults to 1.
 
 # Returns
-- `Matrix{<:Real}`: A symmetric matrix \( M \), where \( M[i, j] \) represents the mutual information between the \( i \)-th and \( j \)-th dimensions of the dataset.
+- `Matrix{<:Real}`: A symmetric matrix M, where  M[i, j] represents the mutual information between the i-th and j-th dimensions of the dataset.
 
 # Behavior
 - The function computes mutual information for all pairs of dimensions in the dataset using a k-NN-based invariant measure.
@@ -1177,12 +1147,10 @@ Compute the mutual information (MI) matrix for all pairs of dimensions in the gi
 # Compute MI for a 3-dimensional dataset
 data = rand(3, 100)  # 100 points in 3 dimensions
 mi_matrix = MI(data, k=5, verbose=true)
-println("Mutual Information Matrix:\n$mi_matrix")
 
 # Compute MI for transposed data
 data_t = rand(100, 3)  # Transposed dataset
 mi_matrix = MI(data_t, k=3, dim=2)
-println("Mutual Information Matrix:\n$mi_matrix")
 """
 function MI(a::Matrix{<:Real}; k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Matrix{<:Real}
     if dim == 2
@@ -1314,12 +1282,10 @@ Compute the conditional mutual information (CMI) matrix for all pairs of dimensi
 data = rand(3, 100)  # 100 points in 3 dimensions
 conditioning_var = rand(100)  # Conditioning variable
 cmi_matrix = CMI(data, conditioning_var, k=5, verbose=true)
-println("Conditional Mutual Information Matrix:\n$cmi_matrix")
 
 # Compute CMI for transposed data
 data_t = rand(100, 3)  # Transposed dataset
 cmi_matrix = CMI(data_t, conditioning_var, k=3, dim=2)
-println("Conditional Mutual Information Matrix:\n$cmi_matrix")
 """
 function CMI(a::Matrix{<:Real}, b::Vector{<:Real}; base::Real = e, k::Int = 3, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Matrix{<:Real}
     if dim == 2
@@ -1334,7 +1300,7 @@ function CMI(a::Matrix{<:Real}, b::Vector{<:Real}; base::Real = e, k::Int = 3, v
         println("Base: $base")
     end
     noise = 0
-    if degenerate
+    if degenerateoentro
         noise = 1
     end
 
@@ -1464,93 +1430,6 @@ function CMI(a::Matrix{<:Real}, b::Matrix{<:Real}; base::Real = e, k::Int = 3, v
         throw(ArgumentError("Conditional arrays must contain the same number of points in one dimension"))
     end
     return CMI(a, vec(b), base=base, k=k, verbose=verbose, degenerate=degenerate, dim=dim)
-end
-
-
-"""
-Type : ?entropy
-"""
-function ent(mat_::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
-   return entropy(mat_, k=k, verbose=verbose, degenerate=degenerate, base=base, dim=dim, method=method, nbins=nbins)
-end
-                
-function ent(array::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real
-    return entropy(array, k=k, verbose=verbose, degenerate=degenerate, base=base, method=method, nbins=nbins) 
-end
-
-function nMI(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
-    return normalized_mutual_information(mat_1, mat_2, k=k, base=base, verbose=verbose, degenerate=degenerate, dim=dim, method=method, nbins=nbins)
-end
-                                                                                        
-function nMI(array_1::Vector{<:Real}, array_2::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real
-    return normalized_mutual_information(array_1, array_2, k=k, base=base, verbose=verbose, degenerate=degenerate, method=method, nbins=nbins)
-end
-
-"""
-Type : ?mutual_information
-"""
-function MI(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
-    return mutual_information(mat_1, mat_2, k=k, base=base, verbose=verbose, degenerate=degenerate, dim=dim, method=method, nbins=nbins)
-end
-                        
-function MI(array_1::Vector{<:Real}, array_2::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real
-    return mutual_information(array_1, array_2, k=k, base=base, verbose=verbose, degenerate=degenerate, method=method, nbins=nbins)
-end
-
-function CE(mat_::Matrix{<:Real}, cond_::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
-    return return conditional_entropy(mat_, cond_, k=k, base=base, verbose=verbose, degenerate=degenerate, dim=dim, method=method, nbins=nbins)
-end
-                                
-function CE(mat_::Vector{<:Real}, cond_::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real
-    return return conditional_entropy(mat_, cond_, k=k, base=base, verbose=verbose, degenerate=degenerate, method=method, nbins=nbins)
-end
-                        
-function II(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
-    return interaction_information(mat_1, mat_2, mat_3, k=k, base=base, verbose=verbose, degenerate=degenerate, dim=dim, method=method, nbins=nbins)
-end
-                                                                
-function II(array_1::Vector{<:Real}, array_2::Vector{<:Real}, array_3::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real
-    return interaction_information(array_1, array_2, array_3, k=k, base=base, verbose=verbose, degenerate=degenerate, method=method, nbins=nbins)
-end
-
-function Uni(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Tuple{Real, Real}
-    return unique(mat_1, mat_2, mat_3, k=k, base=base, verbose=verbose, degenerate=degenerate, dim=dim, method=method, nbins=nbins)
-end
-                                                                
-function Uni(array_1::Vector{<:Real}, array_2::Vector{<:Real}, array_3::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Tuple{Real, Real}
-    return unique(array_1, array_2, array_3, k=k, base=base, verbose=verbose, degenerate=degenerate, method=method, nbins=nbins)
-end
-
-function Re(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
-    return redundancy(mat_1, mat_2, mat_3, k=k, base=base, verbose=verbose, degenerate=degenerate, dim=dim, method=method, nbins=nbins)
-end
-                                                                            
-function Re(array_1::Vector{<:Real}, array_2::Vector{<:Real}, array_3::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real
-    return redundancy(array_1, array_2, array_3, k=k, base=base, verbose=verbose, degenerate=degenerate, method=method, nbins=nbins)
-end  
-
-function Syn(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
-    return synergy(mat_1, mat_2, mat_3, k=k, base=base, verbose=verbose, degenerate=degenerate, dim=dim, method=method, nbins=nbins)
-end
-                                                                            
-function Syn(array_1::Vector{<:Real}, array_2::Vector{<:Real}, array_3::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real
-    return synergy(array_1, array_2, array_3, k=k, base=base, verbose=verbose, degenerate=degenerate, method=method, nbins=nbins)
-end  
-
-function IQR(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = 10, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
-    return information_quality_ratio(mat_1, mat_2, k=k, base=base, verbose=verbose, degenerate=degenerate, dim=dim, method=method, nbins=nbins)
-end
-                                                                                                    
-function IQR(array_1::Vector{<:Real}, array_2::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = 10, verbose::Bool = false, degenerate::Bool = false)::Real
-    return information_quality_ratio(array_1, array_2, k=k, base=base, verbose=verbose, degenerate=degenerate, method=method, nbins=nbins)
-end
-
-function CMI(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, cond_::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
-    return conditional_mutual_information(mat_1, mat_2, cond_, k=k, base=base, verbose=verbose, degenerate=degenerate, dim=dim, method=method, nbins=nbins)
-end
-                                                    
-function CMI(array_1::Vector{<:Real}, array_2::Vector{<:Real}, cond_::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real
-    return conditional_mutual_information(array_1, array_2, cond_, k=k, base=base, verbose=verbose, degenerate=degenerate, method=method, nbins=nbins)
 end
 
 end
