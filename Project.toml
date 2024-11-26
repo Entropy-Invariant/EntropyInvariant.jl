@@ -1,0 +1,18 @@
+name = "EntropyInfo"
+uuid = "73e3304b-a6b6-4b69-aa20-e611882c686e"
+authors = ["Felix Servant <felix.servant@synchrotron-soleil.fr> and Alexandre Giuliani <alexandre.giuliani@synchrotron-soleil.fr>"]
+version = "1.0.0-DEV"
+
+[compat]
+julia = "1.10"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
+
+[deps]
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+NearestNeighbors = "b8a86587-4115-5ab1-83bc-aa920d37bbce"
+SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
