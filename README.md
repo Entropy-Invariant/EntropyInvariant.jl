@@ -6,17 +6,15 @@
 
 This code is an improved nearest neighbor method for estimating differential entropy[^1] for continuous variables, invariant under change of variables, and positive. This approximation claim to solve the limiting density of discrete points formulated by Edwin Thompson Jaynes[^2]. All the details of the estimation can be found on the paper[^4].
 
-The entropy \( H(X) \) is defined as:
+The entropy H(X) is defined as:
 
-![Equation](https://latex.codecogs.com/svg.latex?H(X)=-\int_X%20p(x)\log\left(\frac{p(x)}{m(x)}\right)\mathrm{d}x)
+H(X) = - ∫ₓ p(x) log(p(x) / m(x)) dx
 
-The main novelty is \( m(x) \), the invariant measure. We introduce a proposition to describe this measure[^4] with the following properties:
+The main novelty is m(x), the invariant measure. We introduce a proposition to describe this measure[^4] with the following properties:
 
-| Property | Formula                            |
-|----------|------------------------------------|
-| 1        | \( m(X) = r_X > 0 \)              |
-| 2        | \( m(aX) = am(X) = ar_X \)        |
-| 3        | \( m(X + b) = m(X) = r_X \)       |
+1\) m(X) = r_X > 0
+2\) m(aX) = am(X) = ar_X
+3\) m(X + b) = m(X) = r_X
 
 We found that the median value of the nearest-neighbor distance of each point is an appropriate measure for these properties.
 
