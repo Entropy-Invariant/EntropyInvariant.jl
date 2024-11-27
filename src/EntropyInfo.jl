@@ -1307,7 +1307,7 @@ cmi_matrix = CMI(data, conditioning_var, k=5, verbose=true)
 data_t = rand(100, 3)  # Transposed dataset
 cmi_matrix = CMI(data_t, conditioning_var, k=3, dim=2)
 """
-function CMI(a::Matrix{<:Real}, b::Union{Vector{<:Real}, Nothing} = nothing; base::Real = e, k::Int = 3, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Matrix{<:Real}
+function CMI(a::Matrix{<:Real}, b::Vector{<:Real}; base::Real = e, k::Int = 3, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Matrix{<:Real}
     if dim == 2
         a = Matrix{Float64}(transpose(a))
     end   
@@ -1443,7 +1443,7 @@ function CMI(a::Matrix{<:Real}, b::Union{Vector{<:Real}, Nothing} = nothing; bas
     return all_cmi_ijz*log(base, e)
 end
                                                                                                                                     
-function CMI(a::Matrix{<:Real}, b::Union{Matrix{<:Real}, Nothing} = nothing; base::Real = e, k::Int = 3, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Matrix{<:Real}
+function CMI(a::Matrix{<:Real}, b::Matrix{<:Real}; base::Real = e, k::Int = 3, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Matrix{<:Real}
     n2 = length(b[:,1])
     d2 = length(b[1,:])
     if (n2 != 1) & (dim == 2) | ((d2 != 1) & (dim == 1))
