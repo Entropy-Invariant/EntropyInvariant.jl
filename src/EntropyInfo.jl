@@ -5,7 +5,7 @@ import StatsBase: median, mean
 import NearestNeighbors: KDTree, knn
 import SpecialFunctions: gamma, digamma
 
-export entropy, conditional_entropy, mutual_information, normalized_mutual_information, interaction_information, redundancy, unique, synergy, information_quality_ratio
+export entropy, conditional_entropy, mutual_information, conditional_mutual_information, normalized_mutual_information, interaction_information, redundancy, unique, synergy, information_quality_ratio
 
 const e = 2.718281828459045  #
 
@@ -555,6 +555,100 @@ end
                                 
 
 
+"""
+    conditional_mutual_information(X::Matrix{<:Real}, Y::Union{Matrix{<:Real}, Nothing} = nothing, Z::Union{Matrix{<:Real}, Nothing} = nothing; method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1, optimize::Bool = false) -> Real
+
+Compute the conditional mutual information (CMI) between two datasets given a third conditioning dataset as   I(X; Y | Z) = H(X, Z) + H(Y, Z) - H(X, Y, Z) - H(Z), where:
+  - H(Z): Entropy of the conditioning dataset Z.
+  - H(X, Z): Joint entropy of X and Z.
+  - H(Y, Z): Joint entropy of Y and Z.
+  - H(X, Y, Z): Joint entropy of X, y and Z.
+
+
+# Arguments
+- X::Vector or Matrix{<:Real}`: A matrix where each column represents a data point and each row represents a dimension for the first dataset.
+- Y::Vector or Matrix{<:Real}`: A matrix where each column represents a data point and each row represents a dimension for the second dataset.
+- Z::Vector or Matrix{<:Real}`: A matrix where each column represents a data point and each row represents a dimension for the conditioning dataset.
+- `method::String = "inv"` (optional): The method to use for entropy computation. Options are:
+  - `"knn"`: k-Nearest Neighbors based entropy estimation.
+  - `"histogram"`: Histogram-based entropy estimation.
+  - `"inv"`: Invariant entropy estimation (default).
+- `nbins::Int = 10` (optional): The number of bins for the histogram method. Ignored for other methods. Defaults to 10.
+- `k::Int = 3` (optional): The number of neighbors for the k-NN or invariant method. Ignored for the histogram method. Defaults to 3.
+- `base::Real = e` (optional): The logarithmic base for entropy computation. Defaults to the natural logarithm (`e`).
+- `verbose::Bool = false` (optional): If `true`, prints additional information about the datasets and computation process. Defaults to `false`.
+- `degenerate::Bool = false` (optional): If `true`, adds noise to distances for the k-NN or invariant method to handle degenerate cases. Ignored for the histogram method. Defaults to `false`.
+- `dim::Int = 1` (optional): Indicates whether the data is organized in rows (`dim = 1`) or columns (`dim = 2`). Defaults to 1 (data in rows).
+- `optimize::Bool = false` (optional): If `true`, compute the invariant two-dimensional conditional mutual information of X and Z faster. Defaults to `false`. Y should be nothing.
+
+# Returns
+- `Real`: The computed conditional mutual information I(X; Y | Z)
+
+# Behavior
+- Depending on the specified `method`, the appropriate entropy estimation function (`entropy_knn`, `entropy_hist`, `entropy_inv`) is called.
+
+# Example
+x = rand(1, 100)  # 100 points in 1D
+y = rand(1, 100)  # 100 points in 1D
+z = rand(1, 100)  # 100 points in 1D
+
+# Using k-NN method
+cmi = conditional_mutual_information(x, y, z, method="knn", k=5, verbose=true)
+
+# Using histogram method
+cmi = conditional_mutual_information(x, y, z, method="histogram", nbins=10)
+
+# Using invariant method
+cmi = conditional_mutual_information(x, y, z, method="inv", k=3)
+"""
+function conditional_mutual_information(mat_1::Matrix{<:Real}, mat_2::Union{Matrix{<:Real}, Nothing} = nothing, cond_::Union{Matrix{<:Real}, Nothing} = nothing;method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1, optimize::Bool = false)::Real
+    if cond_ == nothing
+        throw(ArgumentError("Conditional value is missing"))
+    end
+    if optimize == true
+        return CMI(mat_1, cond_, k=k, base=base, verbose=verbose, degenerate=degenerate, dim=dim)
+    end
+    if dim == 1
+        mat_1 = Matrix{Float64}(transpose(mat_1))
+        mat_2 = Matrix{Float64}(transpose(mat_2))
+        cond_ = Matrix{Float64}(transpose(cond_))
+    end 
+    n1 = length(mat_1[1,:]) #nb de points
+    n2 = length(mat_2[1,:]) #nb de points
+    n3 = length(cond_[1,:]) #nb de points                      
+    d1 = length(mat_1[:,1]) #dimension
+    d2 = length(mat_2[:,1]) #dimension
+    d3 = length(cond_[:,1]) #dimension
+    if (n1 != n2) | (n1 != n2) | (n2 != n3) 
+        throw(ArgumentError("Input arrays must contain the same number of points"))
+    end
+    if d1 != d2 != d3 != 1
+        throw(ArgumentError("The total dimension should be 3"))
+    end
+    if verbose
+        println("Number of points: $n1")
+        println("Dimensions: $(d1+d2+d3)")
+        println("Base: $base")
+    end
+    ent_cond_ = entropy(cond_, method=method, nbins=nbins, k=k, base=base, degenerate=degenerate, dim=2)
+    ent_cond1_ = entropy(vcat(mat_1, cond_), method=method, nbins=nbins, k=k, base=base, degenerate=degenerate, dim=2)
+    ent_cond2_ = entropy(vcat(mat_2, cond_), method=method, nbins=nbins, k=k, base=base, degenerate=degenerate, dim=2)
+    ent_cond12_ = entropy(vcat(mat_1, mat_2, cond_), method=method, nbins=nbins, k=k, base=base, degenerate=degenerate, dim=2)
+    return ent_cond1_+ent_cond2_-ent_cond12_-ent_cond_
+end
+
+function conditional_mutual_information(array_1::Vector{<:Real}, array_2::Union{Vector{<:Real}, Nothing} = nothing, cond_:::Union{Vector{<:Real}, Nothing} = nothing;method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, optimize::Bool = false)::Real
+    if cond_ == nothing
+        throw(ArgumentError("Conditional value is missing"))
+    end
+    if optimize == true
+        return CMI(array_1, cond_, k=k, base=base, verbose=verbose, degenerate=degenerate, dim=dim)
+    end
+    array_1 = reshape(array_1, length(array_1), 1)
+    array_2 = reshape(array_2, length(array_2), 1)        
+    cond_ = reshape(cond_, length(cond_), 1)
+    return conditional_mutual_information(array_1, array_2, cond_, method=method, nbins=nbins, k=k, verbose=verbose, degenerate=degenerate, base=base, optimize=optimize)
+end
 
 
 
@@ -1213,7 +1307,7 @@ cmi_matrix = CMI(data, conditioning_var, k=5, verbose=true)
 data_t = rand(100, 3)  # Transposed dataset
 cmi_matrix = CMI(data_t, conditioning_var, k=3, dim=2)
 """
-function CMI(a::Matrix{<:Real}, b::Vector{<:Real}; base::Real = e, k::Int = 3, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Matrix{<:Real}
+function CMI(a::Matrix{<:Real}, b::Union{Vector{<:Real}, Nothing} = nothing; base::Real = e, k::Int = 3, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Matrix{<:Real}
     if dim == 2
         a = Matrix{Float64}(transpose(a))
     end   
@@ -1349,7 +1443,7 @@ function CMI(a::Matrix{<:Real}, b::Vector{<:Real}; base::Real = e, k::Int = 3, v
     return all_cmi_ijz*log(base, e)
 end
                                                                                                                                     
-function CMI(a::Matrix{<:Real}, b::Matrix{<:Real}; base::Real = e, k::Int = 3, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Matrix{<:Real}
+function CMI(a::Matrix{<:Real}, b::Union{Matrix{<:Real}, Nothing} = nothing; base::Real = e, k::Int = 3, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Matrix{<:Real}
     n2 = length(b[:,1])
     d2 = length(b[1,:])
     if (n2 != 1) & (dim == 2) | ((d2 != 1) & (dim == 1))
