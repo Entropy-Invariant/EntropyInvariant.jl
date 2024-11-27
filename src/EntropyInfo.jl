@@ -637,7 +637,7 @@ function conditional_mutual_information(mat_1::Matrix{<:Real}, mat_2::Union{Matr
     return ent_cond1_+ent_cond2_-ent_cond12_-ent_cond_
 end
 
-function conditional_mutual_information(array_1::Vector{<:Real}, array_2::Union{Vector{<:Real}, Nothing} = nothing, cond_:::Union{Vector{<:Real}, Nothing} = nothing;method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, optimize::Bool = false)::Real
+function conditional_mutual_information(array_1::Vector{<:Real}, array_2::Union{Vector{<:Real}, Nothing} = nothing, cond_::Union{Vector{<:Real}, Nothing} = nothing;method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, optimize::Bool = false)::Real
     if cond_ == nothing
         throw(ArgumentError("Conditional value is missing"))
     end
