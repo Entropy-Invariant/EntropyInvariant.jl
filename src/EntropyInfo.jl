@@ -550,7 +550,7 @@ function mutual_information(array_1::Vector{<:Real}, array_2::Union{Vector{<:Rea
     end
     mat_1 = reshape(array_1, length(array_1), 1)
     mat_2 = reshape(array_2, length(array_2), 1)
-    return mutual_information(array_1, array_2, method=method, nbins=nbins, k=k, verbose=verbose, degenerate=degenerate, base=base, optimize=optimize)
+    return mutual_information(mat_1, mat_2, method=method, nbins=nbins, k=k, verbose=verbose, degenerate=degenerate, base=base, optimize=optimize)
 end
                                 
 
@@ -644,10 +644,10 @@ function conditional_mutual_information(array_1::Vector{<:Real}, array_2::Union{
     if optimize == true
         return CMI(array_1, cond_, k=k, base=base, verbose=verbose, degenerate=degenerate, dim=dim)
     end
-    array_1 = reshape(array_1, length(array_1), 1)
-    array_2 = reshape(array_2, length(array_2), 1)        
+    mat_1 = reshape(array_1, length(array_1), 1)
+    mat_2 = reshape(array_2, length(array_2), 1)        
     cond_ = reshape(cond_, length(cond_), 1)
-    return conditional_mutual_information(array_1, array_2, cond_, method=method, nbins=nbins, k=k, verbose=verbose, degenerate=degenerate, base=base, optimize=optimize)
+    return conditional_mutual_information(mat_1, mat_2, cond_, method=method, nbins=nbins, k=k, verbose=verbose, degenerate=degenerate, base=base, optimize=optimize)
 end
 
 
