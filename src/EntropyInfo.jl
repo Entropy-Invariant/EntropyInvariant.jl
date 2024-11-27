@@ -473,7 +473,7 @@ end
 
 
 """
-    mutual_information(X::Matrix{<:Real}, Y::Matrix{<:Real}; method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1) -> Real
+    mutual_information(X::Matrix{<:Real}, Y::Union{Matrix{<:Real}, Nothing} = nothing; method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1, optimize::Bool = false) -> Real
 
 Compute the mutual information between two datasets as I(X; Y) = H(X) + H(Y) - H(X, Y)
   where:
@@ -494,6 +494,7 @@ Compute the mutual information between two datasets as I(X; Y) = H(X) + H(Y) - H
 - `verbose::Bool = false` (optional): If `true`, prints additional information about the datasets and computation process. Defaults to `false`.
 - `degenerate::Bool = false` (optional): If `true`, adds noise to distances for the k-NN or invariant method to handle degenerate cases. Ignored for the histogram method. Defaults to `false`.
 - `dim::Int = 1` (optional): Indicates whether the data is organized in rows (`dim = 1`) or columns (`dim = 2`). Defaults to 1 (data in rows).
+- `optimize::Bool = false` (optional): If `true`, compute the invariant two-dimensional mutual_information of X faster. Defaults to `false`. Y should be nothing.
 
 # Returns
 - `Real`: The computed mutual information I(X; Y) between the datasets X and Y.
@@ -514,7 +515,10 @@ mi = mutual_information(x, y, method="histogram", nbins=10)
 # Using invariant method
 mi = mutual_information(x, y, method="inv", k=3)
 """
-function mutual_information(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
+function mutual_information(mat_1::Matrix{<:Real}, mat_2::Union{Matrix{<:Real}, Nothing} = nothing;method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1, optimize::Bool = false)::Real
+    if optimize == true
+        return MI(mat_1, k=k, base=base, verbose=verbose, degenerate=degenerate, dim=dim)
+    end
     if dim == 1
         mat_1 = Matrix{Float64}(transpose(mat_1))
         mat_2 = Matrix{Float64}(transpose(mat_2))
@@ -540,16 +544,16 @@ function mutual_information(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real};method:
     return ent_1+ent_2-ent_12
 end
 
-function mutual_information(array_1::Vector{<:Real}, array_2::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real
+function mutual_information(array_1::Vector{<:Real}, array_2::Union{Vector{<:Real}, Nothing} = nothing;method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, optimize::Bool = false)::Real
     mat_1 = reshape(array_1, length(array_1), 1)
     mat_2 = reshape(array_2, length(array_2), 1)
-    return mutual_information(mat_1, mat_2, method=method, nbins=nbins, k=k, verbose=verbose, degenerate=degenerate, base=base)
+    return mutual_information(mat_1, mat_2, method=method, nbins=nbins, k=k, verbose=verbose, degenerate=degenerate, base=base, optimize=optimize)
 end
                                 
 
 
 """
-    conditional_mutual_information(X::Matrix{<:Real}, Y::Matrix{<:Real}, Z::Matrix{<:Real}; method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1) -> Real
+    conditional_mutual_information(X::Matrix{<:Real}, Y::Union{Matrix{<:Real}, Nothing} = nothing, Z::Matrix{<:Real}; method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1, optimize::Bool = false) -> Real
 
 Compute the conditional mutual information (CMI) between two datasets given a third conditioning dataset as   I(X; Y | Z) = H(X, Z) + H(Y, Z) - H(X, Y, Z) - H(Z), where:
   - H(Z): Entropy of the conditioning dataset Z.
@@ -572,6 +576,7 @@ Compute the conditional mutual information (CMI) between two datasets given a th
 - `verbose::Bool = false` (optional): If `true`, prints additional information about the datasets and computation process. Defaults to `false`.
 - `degenerate::Bool = false` (optional): If `true`, adds noise to distances for the k-NN or invariant method to handle degenerate cases. Ignored for the histogram method. Defaults to `false`.
 - `dim::Int = 1` (optional): Indicates whether the data is organized in rows (`dim = 1`) or columns (`dim = 2`). Defaults to 1 (data in rows).
+- `optimize::Bool = false` (optional): If `true`, compute the invariant two-dimensional conditional mutual information of X and Z faster. Defaults to `false`. Y should be nothing.
 
 # Returns
 - `Real`: The computed conditional mutual information I(X; Y | Z)
@@ -593,7 +598,10 @@ cmi = conditional_mutual_information(x, y, z, method="histogram", nbins=10)
 # Using invariant method
 cmi = conditional_mutual_information(x, y, z, method="inv", k=3)
 """
-function conditional_mutual_information(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, cond_::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
+function conditional_mutual_information(mat_1::Matrix{<:Real}, mat_2::Union{Matrix{<:Real}, Nothing} = nothing, cond_::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1, optimize::Bool = false)::Real
+    if optimize == true
+        return CMI(mat_1, cond_, k=k, base=base, verbose=verbose, degenerate=degenerate, dim=dim)
+    end
     if dim == 1
         mat_1 = Matrix{Float64}(transpose(mat_1))
         mat_2 = Matrix{Float64}(transpose(mat_2))
@@ -623,11 +631,11 @@ function conditional_mutual_information(mat_1::Matrix{<:Real}, mat_2::Matrix{<:R
     return ent_cond1_+ent_cond2_-ent_cond12_-ent_cond_
 end
 
-function conditional_mutual_information(array_1::Vector{<:Real}, array_2::Vector{<:Real}, cond_::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real
+function conditional_mutual_information(array_1::Vector{<:Real}, array_2::Union{Vector{<:Real}, Nothing} = nothing, cond_::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, optimize::Bool = false)::Real
     array_1 = reshape(array_1, length(array_1), 1)
     array_2 = reshape(array_2, length(array_2), 1)        
     cond_ = reshape(cond_, length(cond_), 1)
-    return conditional_mutual_information(array_1, array_2, cond_, method=method, nbins=nbins, k=k, verbose=verbose, degenerate=degenerate, base=base)
+    return conditional_mutual_information(array_1, array_2, cond_, method=method, nbins=nbins, k=k, verbose=verbose, degenerate=degenerate, base=base, optimize=optimize)
 end
 
 
