@@ -109,7 +109,7 @@ function hist2d(x, y, nbins)
     counts = zeros(Int, nbins, nbins)
 
     # Count occurrences in each bin
-    for k in 1:length(x)
+    for k in eachindex(x)
         # Find the appropriate bin index for x[k] and y[k]
         i = findfirst(t -> t >= x[k], bin_edges_x) - 1
         j = findfirst(t -> t >= y[k], bin_edges_y) - 1
@@ -158,7 +158,7 @@ function hist3d(x, y, z, nbins)
     counts = zeros(Int, nbins, nbins, nbins)
     
     # Count occurrences in each bin
-    for k in 1:length(x)
+    for k in eachindex(x)
         # Find the appropriate bin index for x[k], y[k], and z[k]
         i = findfirst(t -> t >= x[k], bin_edges_x) - 1
         j = findfirst(t -> t >= y[k], bin_edges_y) - 1
@@ -602,7 +602,7 @@ cmi = conditional_mutual_information(x, y, z, method="histogram", nbins=10)
 cmi = conditional_mutual_information(x, y, z, method="inv", k=3)
 """
 function conditional_mutual_information(mat_1::Matrix{<:Real}, mat_2::Union{Matrix{<:Real}, Nothing} = nothing, cond_::Union{Matrix{<:Real}, Nothing} = nothing;method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1, optimize::Bool = false)::Real
-    if cond_ == nothing
+    if cond_ === nothing
         throw(ArgumentError("Conditional value is missing"))
     end
     if optimize == true
@@ -638,7 +638,7 @@ function conditional_mutual_information(mat_1::Matrix{<:Real}, mat_2::Union{Matr
 end
 
 function conditional_mutual_information(array_1::Vector{<:Real}, array_2::Union{Vector{<:Real}, Nothing} = nothing, cond_::Union{Vector{<:Real}, Nothing} = nothing;method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, optimize::Bool = false)::Real
-    if cond_ == nothing
+    if cond_ === nothing
         throw(ArgumentError("Conditional value is missing"))
     end
     if optimize == true

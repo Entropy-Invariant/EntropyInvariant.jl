@@ -22,8 +22,8 @@ hist_uni = zeros(NB, length(BINS), length(N))
 hist_exp = zeros(NB, length(BINS), length(N))
 
 for nb in 1:NB
-    for bins in 1:length(BINS)
-        for n in 1:length(N)
+    for bins in eachindex(BINS)
+        for n in eachindex(N)
             nor_ = rand(Normal(0,1), N[n])
             hist_nor[nb, bins, n] = EntropyInfo.entropy(nor_, nbins=BINS[bins], method="histogram")
             
@@ -41,8 +41,8 @@ hist_uni2 = zeros(NB, length(BINS), length(N))
 hist_exp2 = zeros(NB, length(BINS), length(N))
 
 for nb in 1:NB
-    for bins in 1:length(BINS)
-        for n in 1:length(N)
+    for bins in eachindex(BINS)
+        for n in eachindex(N)
             nor_ = rand(Normal(0,1/2), N[n])
             hist_nor2[nb, bins, n] = EntropyInfo.entropy(nor_, nbins=BINS[bins], method="histogram")
             
@@ -60,8 +60,8 @@ hist_uni3 = zeros(NB, length(BINS), length(N))
 hist_exp3 = zeros(NB, length(BINS), length(N))
 
 for nb in 1:NB
-    for bins in 1:length(BINS)
-        for n in 1:length(N)
+    for bins in eachindex(BINS)
+        for n in eachindex(N)
             nor_ = rand(Normal(0,3), N[n])
             hist_nor3[nb, bins, n] = EntropyInfo.entropy(nor_, nbins=BINS[bins], method="histogram")
             
@@ -160,8 +160,8 @@ knn_uni = zeros(NB, length(KNN), length(N))
 knn_exp = zeros(NB, length(KNN), length(N))
 
 for nb in 1:NB
-    for knn in 1:length(KNN)
-        for n in 1:length(N)
+    for knn in eachindex(KNN)
+        for n in eachindex(N)
             nor_ = rand(Normal(0,1), N[n])
             knn_nor[nb, knn, n] = EntropyInfo.entropy(nor_, k=KNN[knn], method="knn")
             
@@ -179,8 +179,8 @@ knn_uni2 = zeros(NB, length(KNN), length(N))
 knn_exp2 = zeros(NB, length(KNN), length(N))
 
 for nb in 1:NB
-    for knn in 1:length(KNN)
-        for n in 1:length(N)
+    for knn in eachindex(KNN)
+        for n in eachindex(N)
             nor_ = rand(Normal(0,0.5), N[n])
             knn_nor2[nb, knn, n] = EntropyInfo.entropy(nor_, k=KNN[knn], method="knn")
             
@@ -198,8 +198,8 @@ knn_uni3 = zeros(NB, length(KNN), length(N))
 knn_exp3 = zeros(NB, length(KNN), length(N))
 
 for nb in 1:NB
-    for knn in 1:length(KNN)
-        for n in 1:length(N)
+    for knn in eachindex(KNN)
+        for n in eachindex(N)
             nor_ = rand(Normal(0,3), N[n])
             knn_nor3[nb, knn, n] = EntropyInfo.entropy(nor_, k=KNN[knn], method="knn")
             
@@ -316,8 +316,8 @@ inv_knn_uni = zeros(NB, length(KNN), length(N))
 inv_knn_exp = zeros(NB, length(KNN), length(N))
 
 for nb in 1:NB
-    for knn in 1:length(KNN)
-        for n in 1:length(N)
+    for knn in eachindex(KNN)
+        for n in eachindex(N)
             nor_ = rand(Normal(0,1), N[n])
             inv_knn_nor[nb, knn, n] = EntropyInfo.entropy(nor_, k=KNN[knn], method="inv")
             
@@ -335,8 +335,8 @@ inv_knn_uni2 = zeros(NB, length(KNN), length(N))
 inv_knn_exp2 = zeros(NB, length(KNN), length(N))
 
 for nb in 1:NB
-    for knn in 1:length(KNN)
-        for n in 1:length(N)
+    for knn in eachindex(KNN)
+        for n in eachindex(N)
             nor_ = rand(Normal(0,0.5), N[n])
             inv_knn_nor2[nb, knn, n] = EntropyInfo.entropy(nor_, k=KNN[knn], method="inv")
             
@@ -354,8 +354,8 @@ inv_knn_uni3 = zeros(NB, length(KNN), length(N))
 inv_knn_exp3 = zeros(NB, length(KNN), length(N))
 
 for nb in 1:NB
-    for knn in 1:length(KNN)
-        for n in 1:length(N)
+    for knn in eachindex(KNN)
+        for n in eachindex(N)
             nor_ = rand(Normal(0,3), N[n])
             inv_knn_nor3[nb, knn, n] = EntropyInfo.entropy(nor_, k=KNN[knn], method="inv")
             
@@ -452,8 +452,8 @@ mi_hist2_nor1 = zeros(NB, length(BINS), length(N))
 mi_hist2_nor2 = zeros(NB, length(BINS), length(N))
 mi_hist2_nor3 = zeros(NB, length(BINS), length(N))
 for nb in 1:NB
-    for bins in 1:length(BINS)
-        for n in 1:length(N)
+    for bins in eachindex(BINS)
+        for n in eachindex(N)
             nor1_ = rand(Normal(0, 0.1), N[n])
             nor2_ = rand(Normal(0, 1), N[n])
             nor3_ = rand(Normal(0, 10), N[n])
@@ -469,8 +469,8 @@ mi_knn2_nor1 = zeros(NB, length(KNN), length(N))
 mi_knn2_nor2 = zeros(NB, length(KNN), length(N))
 mi_knn2_nor3 = zeros(NB, length(KNN), length(N))
 for nb in 1:NB
-    for knn in 1:length(KNN)
-        for n in 1:length(N)
+    for knn in eachindex(KNN)
+        for n in eachindex(N)
             nor1_ = rand(Normal(0, 0.1), N[n])
             nor2_ = rand(Normal(0, 1), N[n])
             nor3_ = rand(Normal(0, 10), N[n])
@@ -486,8 +486,8 @@ mi_inv_knn2_nor1 = zeros(NB, length(KNN), length(N))
 mi_inv_knn2_nor2 = zeros(NB, length(KNN), length(N))
 mi_inv_knn2_nor3 = zeros(NB, length(KNN), length(N))
 for nb in 1:NB
-    for knn in 1:length(KNN)
-        for n in 1:length(N)
+    for knn in eachindex(KNN)
+        for n in eachindex(N)
             nor1_ = rand(Normal(0, 0.1), N[n])
             nor2_ = rand(Normal(0, 1), N[n])
             nor3_ = rand(Normal(0, 10), N[n])
