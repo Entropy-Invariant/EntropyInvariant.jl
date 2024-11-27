@@ -601,6 +601,7 @@ cmi = conditional_mutual_information(x, y, z, method="histogram", nbins=10)
 # Using invariant method
 cmi = conditional_mutual_information(x, y, z, method="inv", k=3)
 """
+"""
 function conditional_mutual_information(mat_1::Matrix{<:Real}, mat_2::Union{Matrix{<:Real}, Nothing} = nothing, cond_::Union{Matrix{<:Real}, Nothing} = nothing;method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1, optimize::Bool = false)::Real
     if cond_ == nothing
         throw(ArgumentError("Conditional value is missing"))
@@ -649,7 +650,7 @@ function conditional_mutual_information(array_1::Vector{<:Real}, array_2::Union{
     cond_ = reshape(cond_, length(cond_), 1)
     return conditional_mutual_information(array_1, array_2, cond_, method=method, nbins=nbins, k=k, verbose=verbose, degenerate=degenerate, base=base, optimize=optimize)
 end
-
+"""
 
 
 """
