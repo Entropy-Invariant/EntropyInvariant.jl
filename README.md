@@ -1,46 +1,23 @@
-<script type="text/javascript"
-  src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS_CHTML">
-</script>
-<script type="text/x-mathjax-config">
-  MathJax.Hub.Config({
-    tex2jax: {
-      inlineMath: [['$','$'], ['\\(','\\)']],
-      processEscapes: true},
-      jax: ["input/TeX","input/MathML","input/AsciiMath","output/CommonHTML"],
-      extensions: ["tex2jax.js","mml2jax.js","asciimath2jax.js","MathMenu.js","MathZoom.js","AssistiveMML.js", "[Contrib]/a11y/accessibility-menu.js"],
-      TeX: {
-      extensions: ["AMSmath.js","AMSsymbols.js","noErrors.js","noUndefined.js"],
-      equationNumbers: {
-      autoNumber: "AMS"
-      }
-    }
-  });
-</script>
-
 # EntropyInfo
 
 [![Build Status](https://github.com/felix.servant/EntropyInfo.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/felix.servant/EntropyInfo.jl/actions/workflows/CI.yml?query=branch%3Amaster)
 [![Build Status](https://gitlab.com/felix.servant/EntropyInfo.jl/badges/master/pipeline.svg)](https://gitlab.com/felix.servant/EntropyInfo.jl/pipelines)
 [![Coverage](https://gitlab.com/felix.servant/EntropyInfo.jl/badges/master/coverage.svg)](https://gitlab.com/felix.servant/EntropyInfo.jl/commits/master)
 
-This code is an improved nearest neighbor method for estimating differential entropy[^1] for continuous variables invariant under change of variables and, positive. This approximation claim to solve the limiting density of discrete points formulated by Edwin Thompson Jaynes[^2]. All the details of the estimation can be found on the paper[^4].
-$$
-\begin{equation*}
-\begin{split}
-H(X)=-\int_X p(x)\log\left(\frac{p(x)}{m(x)}\right)\mathrm{d}x
-\end{split}
-\end{equation*}
-$$
+This code is an improved nearest neighbor method for estimating differential entropy[^1] for continuous variables, invariant under change of variables, and positive. This approximation claim to solve the limiting density of discrete points formulated by Edwin Thompson Jaynes[^2]. All the details of the estimation can be found on the paper[^4].
 
-The main novelty is m(x) the invariante measure.
-We introduce a proposition to describe this measure[^4] with the following properties:
-$$
-\begin{aligned}
-1) & \quad m(X) = r_X > 0, \\
-2) & \quad m(aX) = am(X) = ar_X, \\
-3) & \quad m(X+b) = m(X) = r_X
-\end{aligned}
-$$
+The entropy \( H(X) \) is defined as:
+
+![Equation](https://latex.codecogs.com/svg.latex?H(X)=-\int_X%20p(x)\log\left(\frac{p(x)}{m(x)}\right)\mathrm{d}x)
+
+The main novelty is \( m(x) \), the invariant measure. We introduce a proposition to describe this measure[^4] with the following properties:
+
+| Property | Formula                            |
+|----------|------------------------------------|
+| 1        | \( m(X) = r_X > 0 \)              |
+| 2        | \( m(aX) = am(X) = ar_X \)        |
+| 3        | \( m(X + b) = m(X) = r_X \)       |
+
 We found that the median value of the nearest-neighbor distance of each point is an appropriate measure for these properties.
 
 The nearest-neighbor estimation was initialy adapted by G Varoquaux[^3] in python from this paper[^1].
@@ -77,10 +54,6 @@ println("\nMutual Information invariant: ")
 println(mutual_information(p1, p2, k=k))
 println(mutual_information(1e5*p1.+123.456, 1e-5*p2.+654.321, k=k))
 
-p = rand(3, n)
-
-println("\nMI 2D: ")
-println(MI2D(p, k=k, verbose=true))
 ```
 
 In extreme cases, when the neighbourhood distance is small. The logarithm of the distance is strongly negative. This can lead to negative entropy. We therefore recommend setting the "degenerate" parameter to true. This parameter adds 1 to each distance, so that the logarithm is always positive.
