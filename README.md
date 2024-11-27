@@ -18,11 +18,13 @@ The main novelty is m(x) the invariante measure.
 We introduce a proposition to describe this measure[^4] with the following properties:
 
 $$
+\begin{equation*}
 \begin{aligned}
-1) & \quad m(X) = r_X > 0, \\
-2) & \quad m(aX) = am(X) = ar_X, \\
-3) & \quad m(X+b) = m(X) = r_X
+1\) & \quad m(X) = r_X > 0, \\
+2\) & \quad m(aX) = am(X) = ar_X, \\
+3\) & \quad m(X+b) = m(X) = r_X
 \end{aligned}
+\end{equation*}
 $$
 
 We found that the median value of the nearest-neighbor distance of each point is an appropriate measure for these properties.
