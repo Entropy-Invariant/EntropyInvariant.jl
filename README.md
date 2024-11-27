@@ -1,9 +1,5 @@
 # EntropyInfo
 
-[![Build Status](https://github.com/felix.servant/EntropyInfo.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/felix.servant/EntropyInfo.jl/actions/workflows/CI.yml?query=branch%3Amaster)
-[![Build Status](https://gitlab.com/felix.servant/EntropyInfo.jl/badges/master/pipeline.svg)](https://gitlab.com/felix.servant/EntropyInfo.jl/pipelines)
-[![Coverage](https://gitlab.com/felix.servant/EntropyInfo.jl/badges/master/coverage.svg)](https://gitlab.com/felix.servant/EntropyInfo.jl/commits/master)
-
 This code is an improved nearest neighbor method for estimating differential entropy[^1] for continuous variables, invariant under change of variables, and positive. This approximation claim to solve the limiting density of discrete points formulated by Edwin Thompson Jaynes[^2]. All the details of the estimation can be found on the paper[^4].
 
 $$

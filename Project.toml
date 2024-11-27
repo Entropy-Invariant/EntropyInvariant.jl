@@ -1,6 +1,6 @@
 name = "EntropyInfo"
 uuid = "73e3304b-a6b6-4b69-aa20-e611882c686e"
-authors = ["Felix Servant <felix.servant@synchrotron-soleil.fr> and Alexandre Giuliani <alexandre.giuliani@synchrotron-soleil.fr>"]
+authors = ["Felix Truong <felix.servant@synchrotron-soleil.fr> and Alexandre Giuliani <alexandre.giuliani@synchrotron-soleil.fr>"]
 version = "1.0.0-DEV"
 
 [compat]
