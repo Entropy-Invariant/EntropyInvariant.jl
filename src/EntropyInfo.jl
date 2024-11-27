@@ -545,9 +545,6 @@ function mutual_information(mat_1::Matrix{<:Real}, mat_2::Union{Matrix{<:Real}, 
 end
 
 function mutual_information(array_1::Vector{<:Real}, array_2::Union{Vector{<:Real}, Nothing} = nothing;method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, optimize::Bool = false)::Real
-    if cond_ == nothing
-        throw(ArgumentError("Conditional value is missing"))
-    end
     if optimize == true
         return MI(array_1, k=k, base=base, verbose=verbose, degenerate=degenerate, dim=dim)
     end
