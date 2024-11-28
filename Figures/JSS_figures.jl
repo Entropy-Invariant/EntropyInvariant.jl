@@ -25,13 +25,13 @@ for nb in 1:NB
     for bins in eachindex(BINS)
         for n in eachindex(N)
             nor_ = rand(Normal(0,1), N[n])
-            hist_nor[nb, bins, n] = EntropyInfo.entropy(nor_, nbins=BINS[bins], method="histogram")
+            hist_nor[nb, bins, n] = EntropyInvariant.entropy(nor_, nbins=BINS[bins], method="histogram")
             
             uni_ = rand(Uniform(0,1), N[n])
-            hist_uni[nb, bins, n] = EntropyInfo.entropy(uni_, nbins=BINS[bins], method="histogram")
+            hist_uni[nb, bins, n] = EntropyInvariant.entropy(uni_, nbins=BINS[bins], method="histogram")
             
             exp_ = rand(Exponential(1), N[n])
-            hist_exp[nb, bins, n] = EntropyInfo.entropy(exp_, nbins=BINS[bins], method="histogram")
+            hist_exp[nb, bins, n] = EntropyInvariant.entropy(exp_, nbins=BINS[bins], method="histogram")
         end
     end
 end
@@ -44,13 +44,13 @@ for nb in 1:NB
     for bins in eachindex(BINS)
         for n in eachindex(N)
             nor_ = rand(Normal(0,1/2), N[n])
-            hist_nor2[nb, bins, n] = EntropyInfo.entropy(nor_, nbins=BINS[bins], method="histogram")
+            hist_nor2[nb, bins, n] = EntropyInvariant.entropy(nor_, nbins=BINS[bins], method="histogram")
             
             uni_ = rand(Uniform(0,1/2), N[n])
-            hist_uni2[nb, bins, n] = EntropyInfo.entropy(uni_, nbins=BINS[bins], method="histogram")
+            hist_uni2[nb, bins, n] = EntropyInvariant.entropy(uni_, nbins=BINS[bins], method="histogram")
             
             exp_ = rand(Exponential(2), N[n])
-            hist_exp2[nb, bins, n] = EntropyInfo.entropy(exp_, nbins=BINS[bins], method="histogram")
+            hist_exp2[nb, bins, n] = EntropyInvariant.entropy(exp_, nbins=BINS[bins], method="histogram")
         end
     end
 end
@@ -63,13 +63,13 @@ for nb in 1:NB
     for bins in eachindex(BINS)
         for n in eachindex(N)
             nor_ = rand(Normal(0,3), N[n])
-            hist_nor3[nb, bins, n] = EntropyInfo.entropy(nor_, nbins=BINS[bins], method="histogram")
+            hist_nor3[nb, bins, n] = EntropyInvariant.entropy(nor_, nbins=BINS[bins], method="histogram")
             
             uni_ = rand(Uniform(0,3), N[n])
-            hist_uni3[nb, bins, n] = EntropyInfo.entropy(uni_, nbins=BINS[bins], method="histogram")
+            hist_uni3[nb, bins, n] = EntropyInvariant.entropy(uni_, nbins=BINS[bins], method="histogram")
             
             exp_ = rand(Exponential(1/3), N[n])
-            hist_exp3[nb, bins, n] = EntropyInfo.entropy(exp_, nbins=BINS[bins], method="histogram")
+            hist_exp3[nb, bins, n] = EntropyInvariant.entropy(exp_, nbins=BINS[bins], method="histogram")
         end
     end
 end
@@ -163,13 +163,13 @@ for nb in 1:NB
     for knn in eachindex(KNN)
         for n in eachindex(N)
             nor_ = rand(Normal(0,1), N[n])
-            knn_nor[nb, knn, n] = EntropyInfo.entropy(nor_, k=KNN[knn], method="knn")
+            knn_nor[nb, knn, n] = EntropyInvariant.entropy(nor_, k=KNN[knn], method="knn")
             
             uni_ = rand(Uniform(0,1), N[n])
-            knn_uni[nb, knn, n] = EntropyInfo.entropy(uni_, k=KNN[knn], method="knn")
+            knn_uni[nb, knn, n] = EntropyInvariant.entropy(uni_, k=KNN[knn], method="knn")
             
             exp_ = rand(Exponential(1), N[n])
-            knn_exp[nb, knn, n] = EntropyInfo.entropy(exp_, k=KNN[knn], method="knn")
+            knn_exp[nb, knn, n] = EntropyInvariant.entropy(exp_, k=KNN[knn], method="knn")
         end
     end
 end
@@ -182,13 +182,13 @@ for nb in 1:NB
     for knn in eachindex(KNN)
         for n in eachindex(N)
             nor_ = rand(Normal(0,0.5), N[n])
-            knn_nor2[nb, knn, n] = EntropyInfo.entropy(nor_, k=KNN[knn], method="knn")
+            knn_nor2[nb, knn, n] = EntropyInvariant.entropy(nor_, k=KNN[knn], method="knn")
             
             uni_ = rand(Uniform(0,0.5), N[n])
-            knn_uni2[nb, knn, n] = EntropyInfo.entropy(uni_, k=KNN[knn], method="knn")
+            knn_uni2[nb, knn, n] = EntropyInvariant.entropy(uni_, k=KNN[knn], method="knn")
             
             exp_ = rand(Exponential(2), N[n])
-            knn_exp2[nb, knn, n] = EntropyInfo.entropy(exp_, k=KNN[knn], method="knn")
+            knn_exp2[nb, knn, n] = EntropyInvariant.entropy(exp_, k=KNN[knn], method="knn")
         end
     end
 end
@@ -201,13 +201,13 @@ for nb in 1:NB
     for knn in eachindex(KNN)
         for n in eachindex(N)
             nor_ = rand(Normal(0,3), N[n])
-            knn_nor3[nb, knn, n] = EntropyInfo.entropy(nor_, k=KNN[knn], method="knn")
+            knn_nor3[nb, knn, n] = EntropyInvariant.entropy(nor_, k=KNN[knn], method="knn")
             
             uni_ = rand(Uniform(0,3), N[n])
-            knn_uni3[nb, knn, n] = EntropyInfo.entropy(uni_, k=KNN[knn], method="knn")
+            knn_uni3[nb, knn, n] = EntropyInvariant.entropy(uni_, k=KNN[knn], method="knn")
             
             exp_ = rand(Exponential(1/3), N[n])
-            knn_exp3[nb, knn, n] = EntropyInfo.entropy(exp_, k=KNN[knn], method="knn")
+            knn_exp3[nb, knn, n] = EntropyInvariant.entropy(exp_, k=KNN[knn], method="knn")
         end
     end
 end
@@ -319,13 +319,13 @@ for nb in 1:NB
     for knn in eachindex(KNN)
         for n in eachindex(N)
             nor_ = rand(Normal(0,1), N[n])
-            inv_knn_nor[nb, knn, n] = EntropyInfo.entropy(nor_, k=KNN[knn], method="inv")
+            inv_knn_nor[nb, knn, n] = EntropyInvariant.entropy(nor_, k=KNN[knn], method="inv")
             
             uni_ = rand(Uniform(0,1), N[n])
-            inv_knn_uni[nb, knn, n] = EntropyInfo.entropy(uni_, k=KNN[knn], method="inv")
+            inv_knn_uni[nb, knn, n] = EntropyInvariant.entropy(uni_, k=KNN[knn], method="inv")
             
             exp_ = rand(Exponential(1), N[n])
-            inv_knn_exp[nb, knn, n] = EntropyInfo.entropy(exp_, k=KNN[knn], method="inv")
+            inv_knn_exp[nb, knn, n] = EntropyInvariant.entropy(exp_, k=KNN[knn], method="inv")
         end
     end
 end
@@ -338,13 +338,13 @@ for nb in 1:NB
     for knn in eachindex(KNN)
         for n in eachindex(N)
             nor_ = rand(Normal(0,0.5), N[n])
-            inv_knn_nor2[nb, knn, n] = EntropyInfo.entropy(nor_, k=KNN[knn], method="inv")
+            inv_knn_nor2[nb, knn, n] = EntropyInvariant.entropy(nor_, k=KNN[knn], method="inv")
             
             uni_ = rand(Uniform(0,0.5), N[n])
-            inv_knn_uni2[nb, knn, n] = EntropyInfo.entropy(uni_, k=KNN[knn], method="inv")
+            inv_knn_uni2[nb, knn, n] = EntropyInvariant.entropy(uni_, k=KNN[knn], method="inv")
             
             exp_ = rand(Exponential(2), N[n])
-            inv_knn_exp2[nb, knn, n] = EntropyInfo.entropy(exp_, k=KNN[knn], method="inv")
+            inv_knn_exp2[nb, knn, n] = EntropyInvariant.entropy(exp_, k=KNN[knn], method="inv")
         end
     end
 end
@@ -357,13 +357,13 @@ for nb in 1:NB
     for knn in eachindex(KNN)
         for n in eachindex(N)
             nor_ = rand(Normal(0,3), N[n])
-            inv_knn_nor3[nb, knn, n] = EntropyInfo.entropy(nor_, k=KNN[knn], method="inv")
+            inv_knn_nor3[nb, knn, n] = EntropyInvariant.entropy(nor_, k=KNN[knn], method="inv")
             
             uni_ = rand(Uniform(0,3), N[n])
-            inv_knn_uni3[nb, knn, n] = EntropyInfo.entropy(uni_, k=KNN[knn], method="inv")
+            inv_knn_uni3[nb, knn, n] = EntropyInvariant.entropy(uni_, k=KNN[knn], method="inv")
             
             exp_ = rand(Exponential(1/3), N[n])
-            inv_knn_exp3[nb, knn, n] = EntropyInfo.entropy(exp_, k=KNN[knn], method="inv")
+            inv_knn_exp3[nb, knn, n] = EntropyInvariant.entropy(exp_, k=KNN[knn], method="inv")
         end
     end
 end
@@ -458,9 +458,9 @@ for nb in 1:NB
             nor2_ = rand(Normal(0, 1), N[n])
             nor3_ = rand(Normal(0, 10), N[n])
             
-            mi_hist2_nor1[nb, bins, n] = EntropyInfo.mutual_information(nor1_, nor2_, nbins=BINS[bins], method="histogram")
-            mi_hist2_nor2[nb, bins, n] = EntropyInfo.mutual_information(nor1_, nor3_, nbins=BINS[bins], method="histogram")
-            mi_hist2_nor3[nb, bins, n] = EntropyInfo.mutual_information(nor2_, nor3_, nbins=BINS[bins], method="histogram")
+            mi_hist2_nor1[nb, bins, n] = EntropyInvariant.mutual_information(nor1_, nor2_, nbins=BINS[bins], method="histogram")
+            mi_hist2_nor2[nb, bins, n] = EntropyInvariant.mutual_information(nor1_, nor3_, nbins=BINS[bins], method="histogram")
+            mi_hist2_nor3[nb, bins, n] = EntropyInvariant.mutual_information(nor2_, nor3_, nbins=BINS[bins], method="histogram")
         end
     end
 end
@@ -475,9 +475,9 @@ for nb in 1:NB
             nor2_ = rand(Normal(0, 1), N[n])
             nor3_ = rand(Normal(0, 10), N[n])
             
-            mi_knn2_nor1[nb, knn, n] = EntropyInfo.mutual_information(nor1_, nor2_, k=KNN[knn], method="knn")
-            mi_knn2_nor2[nb, knn, n] = EntropyInfo.mutual_information(nor1_, nor3_, k=KNN[knn], method="knn")
-            mi_knn2_nor3[nb, knn, n] = EntropyInfo.mutual_information(nor2_, nor3_, k=KNN[knn], method="knn")
+            mi_knn2_nor1[nb, knn, n] = EntropyInvariant.mutual_information(nor1_, nor2_, k=KNN[knn], method="knn")
+            mi_knn2_nor2[nb, knn, n] = EntropyInvariant.mutual_information(nor1_, nor3_, k=KNN[knn], method="knn")
+            mi_knn2_nor3[nb, knn, n] = EntropyInvariant.mutual_information(nor2_, nor3_, k=KNN[knn], method="knn")
         end
     end
 end
@@ -492,9 +492,9 @@ for nb in 1:NB
             nor2_ = rand(Normal(0, 1), N[n])
             nor3_ = rand(Normal(0, 10), N[n])
             
-            mi_inv_knn2_nor1[nb, knn, n] = EntropyInfo.mutual_information(nor1_, nor2_, k=KNN[knn], method="inv")
-            mi_inv_knn2_nor2[nb, knn, n] = EntropyInfo.mutual_information(nor1_, nor3_, k=KNN[knn], method="inv")
-            mi_inv_knn2_nor3[nb, knn, n] = EntropyInfo.mutual_information(nor2_, nor3_, k=KNN[knn], method="inv")
+            mi_inv_knn2_nor1[nb, knn, n] = EntropyInvariant.mutual_information(nor1_, nor2_, k=KNN[knn], method="inv")
+            mi_inv_knn2_nor2[nb, knn, n] = EntropyInvariant.mutual_information(nor1_, nor3_, k=KNN[knn], method="inv")
+            mi_inv_knn2_nor3[nb, knn, n] = EntropyInvariant.mutual_information(nor2_, nor3_, k=KNN[knn], method="inv")
         end
     end
 end
