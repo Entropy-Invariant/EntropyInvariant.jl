@@ -3,7 +3,7 @@ using NearestNeighbors
 using SpecialFunctions
 using Plots
 using Plots.PlotMeasures
-using EntropyInfo
+using EntropyInvariant
 using Distributions
 using Random
 using Serialization
