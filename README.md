@@ -1,4 +1,4 @@
-# EntropyInfo
+# EntropyInvariant
 
 This code is an improved nearest neighbor method for estimating differential entropy[^1] for continuous variables, invariant under change of variables, and positive. This approximation claim to solve the limiting density of discrete points formulated by Edwin Thompson Jaynes[^2]. All the details of the estimation can be found on the paper[^4].
 
@@ -68,7 +68,7 @@ Please inform us if you discover any bugs or errors in the code, or if you belie
 [^1]: [Estimating mutual information](https://journals.aps.org/pre/abstract/10.1103/PhysRevE.69.066138) DOI: 10.1103/PhysRevE.69.066138
 [^2]: [Prior Probabilities](https://ieeexplore.ieee.org/document/4082152) DOI: 10.1109/TSSC.1968.300117
 [^3]: [Python git](https://gist.github.com/GaelVaroquaux/ead9898bd3c973c40429) G Varoquaux
-[^4]: An invariant estimation of entropy and mutual information
+[^4]: An invariant estimation of entropy and mutual information (not yet plublished)
 
 **AUTHORS:** Félix TRUONG, Alexandre GIULIANI
 
