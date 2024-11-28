@@ -1,4 +1,4 @@
-module EntropyInfo
+module EntropyInvariant
 
 # Import specific functions from StatsBase, NearestNeighbors and, SpecialFunctions
 import StatsBase: median, mean
