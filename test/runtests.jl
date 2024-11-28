@@ -1,7 +1,7 @@
-using EntropyInfo
+using EntropyInvariant
 using Test
 
-@testset "EntropyInfo.jl" begin
+@testset "EntropyInvariant.jl" begin
     # Dimensionality and consistency tests
     # Test for Entropy function
     n = 1000
@@ -78,11 +78,11 @@ using Test
     actual_output = zeros(m,m)
     for i in 1:m
         for j in 1:m
-            actual_output[i,j] = EntropyInfo.mutual_information(a[:,i], a[:,j])
+            actual_output[i,j] = EntropyInvariant.mutual_information(a[:,i], a[:,j])
         end
     end
-    expected_output1 = EntropyInfo.mutual_information(a)
-    expected_output2 = EntropyInfo.mutual_information(Matrix(transpose(a)), dim=2)
+    expected_output1 = EntropyInvariant.mutual_information(a)
+    expected_output2 = EntropyInvariant.mutual_information(Matrix(transpose(a)), dim=2)
     @test maximum(abs.(actual_output-expected_output1)) < 1e-7
     @test maximum(abs.(actual_output-expected_output2)) < 1e-7
     
@@ -91,13 +91,13 @@ using Test
     actual_output = zeros(m,m)
     for i in 1:m
         for j in 1:m
-            actual_output[i,j] = EntropyInfo.conditional_mutual_information(a[:,i], a[:,j], b)
+            actual_output[i,j] = EntropyInvariant.conditional_mutual_information(a[:,i], a[:,j], b)
         end
     end
-    expected_output1 = EntropyInfo.conditional_mutual_information(a, b)
-    expected_output2 = EntropyInfo.conditional_mutual_information(a, reshape(b, n, 1))
-    expected_output3 = EntropyInfo.conditional_mutual_information(Matrix(transpose(a)), b, dim=2)
-    expected_output4 = EntropyInfo.conditional_mutual_information(Matrix(transpose(a)), reshape(b, 1, n), dim=2)
+    expected_output1 = EntropyInvariant.conditional_mutual_information(a, b)
+    expected_output2 = EntropyInvariant.conditional_mutual_information(a, reshape(b, n, 1))
+    expected_output3 = EntropyInvariant.conditional_mutual_information(Matrix(transpose(a)), b, dim=2)
+    expected_output4 = EntropyInvariant.conditional_mutual_information(Matrix(transpose(a)), reshape(b, 1, n), dim=2)
     @test maximum(abs.(actual_output-expected_output1)) < 1e-7
     @test maximum(abs.(actual_output-expected_output2)) < 1e-7
     @test maximum(abs.(actual_output-expected_output3)) < 1e-7
