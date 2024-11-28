@@ -31,7 +31,11 @@ In this package you can find other information theory quantities such as **joint
 
 Less common quantities can also be computed including **redundancy**, **information quality ratio** or **normalized mutual information**.
 
-Two additional functions are optimised for computing mutual information and conditional mutual information between every pair of data points. This results in a symmetric matrix.
+The methode for computing the entropy can also be specified. 
+- `method::String = "inv"` (optional): The method to use for entropy computation. Options are:
+  - `"knn"`: k-Nearest Neighbors (k-NN) based entropy estimation.
+  - `"histogram"`: Histogram-based entropy estimation.
+  - `"inv"`: Invariant entropy estimation (default).
 
 **Example usage**:
 
@@ -58,6 +62,18 @@ p2 = 2*p1+rand(n)
 println("\nMutual Information invariant: ")
 println(mutual_information(p1, p2, k=k))
 println(mutual_information(1e5*p1.+123.456, 1e-5*p2.+654.321, k=k))
+
+# Using k-NN method
+data = rand(1, 100)  # 100 points in 1 dimension
+println("Entropy (k-NN): ", entropy(data, method="knn", k=5, verbose=true))
+
+# Using histogram method
+data = rand(100)  # 100 points in 1 dimension
+println("Entropy (Histogram): ", entropy(data, method="histogram", nbins=10) )
+
+# Using invariant method
+data = rand(100)  # 100 points in 1 dimension
+println("Entropy (Invariant): ", entropy(data, method="inv", k=3))
 
 ```
 
