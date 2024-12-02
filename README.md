@@ -53,7 +53,7 @@ p2 = rand(n)
 p3 = rand(n)           
 
 println("\nJoint entropy invariant:")
-println(EntropyInfo.entropy(hcat(p1,p2,p3), verbose=true))
+println(EntropyInvariant.entropy(hcat(p1,p2,p3), verbose=true))
 println(entropy(hcat(p1, 1e5*p2.-123.456, 1e-5*p3.+654.123)))
 
 p1 = rand(n)
