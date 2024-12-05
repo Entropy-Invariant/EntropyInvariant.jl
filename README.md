@@ -64,7 +64,7 @@ println(mutual_information(p1, p2, k=k))
 println(mutual_information(1e5*p1.+123.456, 1e-5*p2.+654.321, k=k))
 
 # Using k-NN method
-data = rand(1, 100)  # 100 points in 1 dimension
+data = rand(100)  # 100 points in 1 dimension
 println("Entropy (k-NN): ", entropy(data, method="knn", k=5, verbose=true))
 
 # Using histogram method
