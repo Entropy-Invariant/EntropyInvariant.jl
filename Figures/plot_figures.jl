@@ -565,3 +565,91 @@ annotate!(p6, -6, 0.4, text("f)", :left, 12))
 plot(p1, p4, p2, p5, p3, p6, size=(600, 800), layout=(3, 2))
 plot!(left_margin=0.2cm, ylim=(-0.4, 0.4))
 #savefig("mi_comparaison.png")
+
+# Mutual information with noise
+
+seed = 42
+Random.seed!(seed)
+
+x = pi*(rand(1000).-0.5)
+x2 = pi*(rand(1000).-0.5)
+
+y1 = cos.(x).+rand(1000)/100
+y2 = y1.+rand(1000)/10
+y3 = y1.+rand(1000)/1
+y4 = y1.+rand(1000)*10
+
+x = 100*x
+
+
+ent1_inv = EntropyInvariant.mutual_information(x, y1, method="inv")
+ent1_knn = EntropyInvariant.mutual_information(x, y1, method="knn")
+
+cor1 = Statistics.cor(x, y1)
+cov1 = Statistics.cov(x, y1)
+
+println(ent1_inv)
+println(ent1_knn)
+println(cor1)
+println(cov1)
+println()
+
+ent2_inv = EntropyInvariant.mutual_information(x, y2, method="inv")
+ent2_knn = EntropyInvariant.mutual_information(x, y2, method="knn")
+
+cor2 = Statistics.cor(x, y2)
+cov2 = Statistics.cov(x, y2)
+
+println(ent2_inv)
+println(ent2_knn)
+println(cor2)
+println(cov2)
+println()
+
+ent3_inv = EntropyInvariant.mutual_information(x, y3, method="inv")
+ent3_knn = EntropyInvariant.mutual_information(x, y3, method="knn")
+
+cor3 = Statistics.cor(x, y3)
+cov3 = Statistics.cov(x, y3)
+
+println(ent3_inv)
+println(ent3_knn)
+println(cor3)
+println(cov3)
+println()
+
+
+ent4_inv = EntropyInvariant.mutual_information(x, y4, method="inv")
+ent4_knn = EntropyInvariant.mutual_information(x, y4, method="knn")
+
+cor4 = Statistics.cor(x, y4)
+cov4 = Statistics.cov(x, y4)
+
+println(ent4_inv)
+println(ent4_knn)
+println(cor4)
+println(cov4)
+println()
+
+p1 = scatter(x, y1, label="", color="black")
+plot!(title="Cor=$(round(cor1, digits=2)); MI(kNN)=$(round(ent1_knn, digits=2)); MI(Inv)=$(round(ent1_inv, digits=2))")
+annotate!(p1, -190, 1.25, text("a)", :left, 12))
+plot!(xlabel="x", ylabel="y")
+
+p2 = scatter(x, y2, label="", color="black")
+plot!(title="Cor=$(round(cor2, digits=2)); MI(kNN)=$(round(ent2_knn, digits=2)); MI(Inv)=$(round(ent2_inv, digits=2))")
+annotate!(p2, -190, 1.25, text("b)", :left, 12))
+plot!(xlabel="x", ylabel="y")
+
+p3 = scatter(x, y3, label="", color="black")
+plot!(title="Cor=$(round(cor3, digits=2)); MI(kNN)=$(round(ent3_knn, digits=2)); MI(Inv)=$(round(ent3_inv, digits=2))")
+annotate!(p3, -188, 2.45, text("c)", :left, 12))
+plot!(xlabel="x", ylabel="y")
+
+p4 = scatter(x, y4, label="", color="black")
+plot!(title="Cor=$(round(cor4, digits=2)); MI(kNN)=$(round(ent4_knn, digits=2)); MI(Inv)=$(round(ent4_inv, digits=2))")
+annotate!(p4, -188, 13, text("d)", :left, 12))
+plot!(xlabel="x", ylabel="y")
+
+plot(p1,p2,p3,p4, size=(500,800), layout=(4,1), left_margin=0.3cm)
+#savefig("MI_noise.png")
