@@ -655,7 +655,7 @@ end
 """
     normalized_mutual_information(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}; method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1) -> Real
 
-Compute the normalized mutual information (NMI) between two datasets as  NMI(X, Y) = max(0, H(X) + H(Y) - H(X, Y))/(H(X) + H(Y)
+Compute the normalized mutual information (NMI) between two datasets as  NMI(X, Y) = max(0, H(X) + H(Y) - H(X, Y))/((1/2)*(H(X) + H(Y))
   where:
   - H(X): Entropy of the first dataset X.
   - H(Y): Entropy of the second dataset Y`
@@ -719,7 +719,7 @@ function normalized_mutual_information(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Re
     ent_1 = entropy(mat_1, nbins=nbins, method=method, k=k, base=base, degenerate=degenerate, dim=2)
     ent_2 = entropy(mat_2, nbins=nbins, method=method, k=k, base=base, degenerate=degenerate, dim=2)
     ent_12 = entropy(vcat(mat_1, mat_2), nbins=nbins, method=method, k=k, base=base, degenerate=degenerate, dim=2)
-    return max(0, ent_1+ent_2-ent_12)/(ent_1+ent_2)
+    return max(0, ent_1+ent_2-ent_12)/((1/2)*(ent_1+ent_2))
 end
 
 function normalized_mutual_information(array_1::Vector{<:Real}, array_2::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real
