@@ -70,37 +70,51 @@ using Test
     expected_output2 = information_quality_ratio(reshape(x, 1, n),reshape(y, 1, n), dim=2)
     @test abs(actual_output-expected_output1) < 1e-7
     @test abs(actual_output-expected_output2) < 1e-7
-    
-    """
-    # Test for Mutual Information Matrix
+
+    # Test for Unique (qualified to avoid conflict with Base.unique)
+    actual_output = EntropyInvariant.unique(x,y,z)
+    expected_output1 = EntropyInvariant.unique(reshape(x, n, 1),reshape(y, n, 1),reshape(z, n, 1))
+    expected_output2 = EntropyInvariant.unique(reshape(x, 1, n),reshape(y, 1, n),reshape(z, 1, n), dim=2)
+    @test abs(actual_output[1]-expected_output1[1]) < 1e-7
+    @test abs(actual_output[2]-expected_output1[2]) < 1e-7
+    @test abs(actual_output[1]-expected_output2[1]) < 1e-7
+    @test abs(actual_output[2]-expected_output2[2]) < 1e-7
+
+    # Test for Synergy
+    actual_output = synergy(x,y,z)
+    expected_output1 = synergy(reshape(x, n, 1),reshape(y, n, 1),reshape(z, n, 1))
+    expected_output2 = synergy(reshape(x, 1, n),reshape(y, 1, n),reshape(z, 1, n), dim=2)
+    @test abs(actual_output-expected_output1) < 1e-7
+    @test abs(actual_output-expected_output2) < 1e-7
+
+    # Test for Optimized Mutual Information Matrix (MI function)
     m = 3
-    a = rand(n, 3)
-    actual_output = zeros(m,m)
+    a = rand(n, m)
+    actual_output = zeros(m, m)
     for i in 1:m
         for j in 1:m
-            actual_output[i,j] = EntropyInvariant.mutual_information(a[:,i], a[:,j])
+            actual_output[i,j] = mutual_information(a[:,i], a[:,j])
         end
     end
-    expected_output1 = EntropyInvariant.mutual_information(a)
-    expected_output2 = EntropyInvariant.mutual_information(Matrix(transpose(a)), dim=2)
-    @test maximum(abs.(actual_output-expected_output1)) < 1e-7
-    @test maximum(abs.(actual_output-expected_output2)) < 1e-7
-    
-    # Test for Conditional Mutual Information Matrix
+    expected_output1 = EntropyInvariant.MI(a)
+    expected_output2 = EntropyInvariant.MI(Matrix(transpose(a)), dim=2)
+    @test maximum(abs.(actual_output - expected_output1)) < 1e-7
+    @test maximum(abs.(actual_output - expected_output2)) < 1e-7
+
+    # Test for Optimized Conditional Mutual Information Matrix (CMI function)
     b = rand(n)
-    actual_output = zeros(m,m)
+    actual_output = zeros(m, m)
     for i in 1:m
         for j in 1:m
-            actual_output[i,j] = EntropyInvariant.conditional_mutual_information(a[:,i], a[:,j], b)
+            actual_output[i,j] = conditional_mutual_information(a[:,i], a[:,j], b)
         end
     end
-    expected_output1 = EntropyInvariant.conditional_mutual_information(a, b)
-    expected_output2 = EntropyInvariant.conditional_mutual_information(a, reshape(b, n, 1))
-    expected_output3 = EntropyInvariant.conditional_mutual_information(Matrix(transpose(a)), b, dim=2)
-    expected_output4 = EntropyInvariant.conditional_mutual_information(Matrix(transpose(a)), reshape(b, 1, n), dim=2)
-    @test maximum(abs.(actual_output-expected_output1)) < 1e-7
-    @test maximum(abs.(actual_output-expected_output2)) < 1e-7
-    @test maximum(abs.(actual_output-expected_output3)) < 1e-7
-    @test maximum(abs.(actual_output-expected_output4)) < 1e-7
-    """
+    expected_output1 = EntropyInvariant.CMI(a, b)
+    expected_output2 = EntropyInvariant.CMI(a, reshape(b, n, 1))
+    expected_output3 = EntropyInvariant.CMI(Matrix(transpose(a)), b, dim=2)
+    expected_output4 = EntropyInvariant.CMI(Matrix(transpose(a)), reshape(b, 1, n), dim=2)
+    @test maximum(abs.(actual_output - expected_output1)) < 1e-7
+    @test maximum(abs.(actual_output - expected_output2)) < 1e-7
+    @test maximum(abs.(actual_output - expected_output3)) < 1e-7
+    @test maximum(abs.(actual_output - expected_output4)) < 1e-7
 end
