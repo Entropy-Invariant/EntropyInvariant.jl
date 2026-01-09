@@ -1,7 +1,7 @@
 name = "EntropyInvariant"
 uuid = "73e3304b-a6b6-4b69-aa20-e611882c686e"
 authors = ["Felix Truong <felix.servant7@gmail.com> and Alexandre Giuliani <alexandre.giuliani@synchrotron-soleil.fr>"]
-version = "1.2.0"
+version = "1.1.0"
 
 [compat]
 julia = "1.1"
