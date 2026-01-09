@@ -2,20 +2,24 @@ using Documenter, EntropyInvariant
 
 makedocs(
     modules = [EntropyInvariant],
-    format = Documenter.HTML(; prettyurls = get(ENV, "CI", nothing) == "true"),
     authors = "Félix Truong, Alexandre Giuliani",
     sitename = "EntropyInvariant.jl",
-    format=Documenter.HTML(;
-        canonical="https://github.com/Entropy-Invariant/EntropyInvariant.jl",
-        edit_link="main",
-        assets=String[],
+    format = Documenter.HTML(;
+        prettyurls = get(ENV, "CI", nothing) == "true",
+        canonical = "https://github.com/Entropy-Invariant/EntropyInvariant.jl",
+        edit_link = "main",
+        assets = String[],
     ),
     pages = [
-        "Home" => "index.md"
+        "Home" => "index.md",
+        "Getting Started" => "getting_started.md",
+        "Tutorial" => "tutorial.md",
+        "Theory" => "theory.md",
+        "API Reference" => "api.md",
     ],
 )
 
 deploydocs(
-    repo = "https://github.com/Entropy-Invariant/EntropyInvariant.jl",
-    devbranch = "main"
+    repo = "github.com/Entropy-Invariant/EntropyInvariant.jl",
+    devbranch = "main",
 )

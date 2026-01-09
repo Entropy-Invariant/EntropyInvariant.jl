@@ -31,11 +31,32 @@ In this package you can find other information theory quantities such as **joint
 
 Less common quantities can also be computed including **redundancy**, **information quality ratio** or **normalized mutual information**.
 
-The methode for computing the entropy can also be specified. 
+The methode for computing the entropy can also be specified.
 - `method::String = "inv"` (optional): The method to use for entropy computation. Options are:
   - `"knn"`: k-Nearest Neighbors (k-NN) based entropy estimation.
   - `"histogram"`: Histogram-based entropy estimation.
   - `"inv"`: Invariant entropy estimation (default).
+
+## Package Structure
+
+The package follows Julia best practices with a modular organization:
+
+```
+src/
+├── EntropyInvariant.jl          # Main module (exports, includes)
+├── types.jl                     # Data structures (DataShape, KNNResult)
+├── helpers/
+│   ├── utility_helpers.jl       # Utility functions (nn1, histograms, logging)
+│   ├── data_helpers.jl          # Data transformation & validation
+│   └── computation_helpers.jl   # Core computation helpers
+├── entropy.jl                   # Entropy estimation functions
+├── mutual_information.jl        # Mutual information & conditional entropy
+├── advanced.jl                  # Advanced information theory functions
+├── pid.jl                       # Partial Information Decomposition
+└── optimized.jl                 # Optimized matrix computations
+```
+
+This modular structure improves code maintainability while preserving all functionality and numerical accuracy.
 
 **Example usage**:
 
