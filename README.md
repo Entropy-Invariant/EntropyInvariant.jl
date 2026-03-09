@@ -105,7 +105,7 @@ Please inform us if you discover any bugs or errors in the code, or if you belie
 [^1]: [Estimating mutual information](https://journals.aps.org/pre/abstract/10.1103/PhysRevE.69.066138) DOI: 10.1103/PhysRevE.69.066138
 [^2]: [Prior Probabilities](https://ieeexplore.ieee.org/document/4082152) DOI: 10.1109/TSSC.1968.300117
 [^3]: [Python git](https://gist.github.com/GaelVaroquaux/ead9898bd3c973c40429) G Varoquaux
-[^4]: An invariant estimation of entropy and mutual information (not yet plublished)
+[^4]: [An Invariant Measure for Differential Entropy: From Kullback–Leibler Divergence to Scale-Invariant Information Theory](https://www.mdpi.com/1099-4300/28/3/301) DOI: 10.3390/e28030301
 
 **AUTHORS:** Félix TRUONG, Alexandre GIULIANI
 
