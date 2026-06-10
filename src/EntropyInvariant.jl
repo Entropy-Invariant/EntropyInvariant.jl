@@ -1,7 +1,7 @@
 module EntropyInvariant
 
 # Import specific functions from dependencies
-import StatsBase: median, mean
+import Statistics: median, mean
 import NearestNeighbors: KDTree, knn
 import SpecialFunctions: gamma, digamma
 
