@@ -1,11 +1,11 @@
 name = "EntropyInvariant"
 uuid = "73e3304b-a6b6-4b69-aa20-e611882c686e"
 authors = ["Felix Truong <felix.servant7@gmail.com> and Alexandre Giuliani <alexandre.giuliani@synchrotron-soleil.fr>"]
-version = "1.1.0"
+version = "1.1.1"
 
 [compat]
 julia = "1.1"
-StatsBase = "0.33"
+Statistics = "1"
 NearestNeighbors = "0.4"
 SpecialFunctions = "2"
 
@@ -16,6 +16,6 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 test = ["Test"]
 
 [deps]
-StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 NearestNeighbors = "b8a86587-4115-5ab1-83bc-aa920d37bbce"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
