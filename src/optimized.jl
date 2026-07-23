@@ -44,23 +44,46 @@ data_cols = rand(5, 1000)  # 5 dimensions × 1000 points
 mi_matrix = MI(data_cols, dim=2)
 ```
 """
-function MI(a::Matrix{<:Real}; k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Matrix{<:Real}
+function MI(a::Matrix{<:Real}; method::String = "inv_ksg", k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Matrix{<:Real}
     if dim == 2
        a = Matrix{Float64}(transpose(a))
     end
     n = length(a[:,1])
     m = length(a[1,:])
-    
+
     if verbose
         println("Number of points: $n")
         println("Dimensions: $m")
         println("Base: $base")
     end
+
+    # Reshape and divide by invariant measure all dimensions (shared by both methods
+    # below). m-element Vector{Matrix{<:Real}} with 1×n Matrix{<:Real}
+    all_ri = zeros(m)
+    for i in 1:m
+        all_ri[i] = median(sort(nn1(sort(a[:,i]))))*n
+    end
+    all_a_ri = [reshape(a[:,i]/all_ri[i], 1, n) for i in 1:m]
+
+    if method == "inv_ksg"
+        all_mi_ij = zeros(m, m)
+        for i in 1:m
+            for j in i:m
+                mi_nats = _mi_ksg_from_normalized(Matrix{Float64}(all_a_ri[i]), Matrix{Float64}(all_a_ri[j]), k)
+                all_mi_ij[i, j] = mi_nats
+                all_mi_ij[j, i] = mi_nats
+            end
+        end
+        return all_mi_ij .* log(base, e)
+    elseif method != "inv"
+        throw(ArgumentError("Invalid method: $method. Choose 'inv' or 'inv_ksg'"))
+    end
+
     noise = 0
     if degenerate
         noise = 1
     end
-    
+
     volume_unit_ball = [2.0 3.141592653589793] #dim = [1,2]
     log_volume_unit_ball = [log(i) for i in volume_unit_ball]
 
@@ -73,16 +96,6 @@ function MI(a::Matrix{<:Real}; k::Int = 3, base::Real = e, verbose::Bool = false
 
     dig_k = digamma(k)
     dig_n = digamma(n)
-
-    # Compute the invariant measure for all dimensions
-    all_ri = zeros(m)
-    for i in 1:m
-        all_ri[i] = median(sort(nn1(sort(a[:,i]))))*n
-    end
-
-    # Reshape and divide by invariant measure all dimensions
-    # m-element Vector{Matrix{<:Real}} with 1×n Matrix{<:Real}
-    all_a_ri = [reshape(a[:,i]/all_ri[i], 1, n) for i in 1:m]
 
     # Compute all marginal entropy KNN INV
     all_ent_i = zeros(m)
@@ -179,18 +192,44 @@ cmi_matrix = CMI(data, conditioning_var, k=5, verbose=true)
 data_t = rand(100, 3)  # Transposed dataset
 cmi_matrix = CMI(data_t, conditioning_var, k=3, dim=2)
 """
-function CMI(a::Matrix{<:Real}, b::Vector{<:Real}; base::Real = e, k::Int = 3, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Matrix{<:Real}
+function CMI(a::Matrix{<:Real}, b::Vector{<:Real}; method::String = "inv_ksg", base::Real = e, k::Int = 3, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Matrix{<:Real}
     if dim == 2
         a = Matrix{Float64}(transpose(a))
-    end   
+    end
     n = length(a[:,1]) #number of points
     m = length(a[1,:]) #dimension
-    
+
     if verbose
         println("Number of points: $n")
         println("Dimensions: $m")
         println("Base: $base")
     end
+
+    # Compute the invariant measure for all dimensions of a, and for the conditioning
+    # variable b, and normalize -- shared by both methods below.
+    all_ri = zeros(m)
+    for i in 1:m
+        all_ri[i] = median(sort(nn1(sort(a[:,i]))))*n
+    end
+    rz = median(sort(nn1(sort(b))))*n
+    all_a_ri = [reshape(a[:,i]/all_ri[i], 1, n) for i in 1:m]
+    b_rz = reshape(b/rz, 1, n)
+
+    if method == "inv_ksg"
+        z_col = Matrix{Float64}(b_rz)
+        all_cmi_ijz = zeros(m, m)
+        for i in 1:m
+            for j in i:m
+                cmi_nats = _cmi_fp_from_normalized(Matrix{Float64}(all_a_ri[i]), Matrix{Float64}(all_a_ri[j]), z_col, k)
+                all_cmi_ijz[i, j] = cmi_nats
+                all_cmi_ijz[j, i] = cmi_nats
+            end
+        end
+        return all_cmi_ijz .* log(base, e)
+    elseif method != "inv"
+        throw(ArgumentError("Invalid method: $method. Choose 'inv' or 'inv_ksg'"))
+    end
+
     noise = 0
     if degenerate
         noise = 1
@@ -211,21 +250,6 @@ function CMI(a::Matrix{<:Real}, b::Vector{<:Real}; base::Real = e, k::Int = 3, v
     dig_k = digamma(k)
     dig_n = digamma(n)
 
-
-    # Compute the invariant measure for all peaks
-    all_ri = zeros(m)
-    for i in 1:m
-        all_ri[i] = median(sort(nn1(sort(a[:,i]))))*n
-    end
-
-    # Compute the invatiant measure for the conditional variable
-    rz = median(sort(nn1(sort(b))))*n
-    # Reshape and divide by invariant measure all peaks
-    # m-element Vector{Matrix{<:Real}} with 1×n Matrix{<:Real}
-    all_a_ri = [reshape(a[:,i]/all_ri[i], 1, n) for i in 1:m]
-
-    # Reshape and divide by invariant measure the conditional variable
-    b_rz = reshape(b/rz, 1, n)
     # Compute marginal entropy KNN INV for the conditional variable
     kdtree_z = KDTree(b_rz)
     idxs_z, dists_z = knn(kdtree_z, b_rz, k_1, true)
@@ -315,12 +339,12 @@ function CMI(a::Matrix{<:Real}, b::Vector{<:Real}; base::Real = e, k::Int = 3, v
     return all_cmi_ijz*log(base, e)
 end
                                                                                                                                     
-function CMI(a::Matrix{<:Real}, b::Matrix{<:Real}; base::Real = e, k::Int = 3, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Matrix{<:Real}
+function CMI(a::Matrix{<:Real}, b::Matrix{<:Real}; method::String = "inv_ksg", base::Real = e, k::Int = 3, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Matrix{<:Real}
     n2 = length(b[:,1])
     d2 = length(b[1,:])
     if (n2 != 1) & (dim == 2) | ((d2 != 1) & (dim == 1))
         throw(ArgumentError("Conditional arrays must contain the same number of points in one dimension"))
     end
-    return CMI(a, vec(b), base=base, k=k, verbose=verbose, degenerate=degenerate, dim=dim)
+    return CMI(a, vec(b), method=method, base=base, k=k, verbose=verbose, degenerate=degenerate, dim=dim)
 end
 

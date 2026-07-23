@@ -17,7 +17,7 @@
                                                                 
 
 """
-    redundancy(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real}; method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1) -> Real
+    redundancy(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real}; method::String = "inv_ksg", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1) -> Real
 
 Compute the redundancy of information shared by two datasets X and Y about a third dataset Z using the mutual information between I(X; Z) and I(Y; Z): R(X, Y; Z) = min(I(X; Z), I(Y; Z))
 
@@ -25,7 +25,7 @@ Compute the redundancy of information shared by two datasets X and Y about a thi
 - `X::Vector or Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the first dataset  X.
 - `Y::Vector or Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the second dataset Y.
 - `Z::Vector or Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the third dataset Z.
-- `method::String = "inv"` (optional): The method to use for mutual information computation. Options are:
+- `method::String = "inv_ksg"` (optional): The method to use for mutual information computation. Options are:
   - `"knn"`: k-Nearest Neighbors based mutual information estimation.
   - `"histogram"`: Histogram-based mutual information estimation.
   - `"inv"`: Invariant mutual information estimation (default).
@@ -56,7 +56,7 @@ redund = redundancy(x, y, z, method="histogram", nbins=10)
 # Using invariant method
 redund = redundancy(x, y, z, method="inv", k=3)
 """
-function redundancy(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
+function redundancy(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real};method::String = "inv_ksg", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
     # Preprocessing: normalize data layout and extract shapes
     mat_1_canonical = ensure_columns_are_points(mat_1, dim)
     mat_2_canonical = ensure_columns_are_points(mat_2, dim)
@@ -77,7 +77,7 @@ function redundancy(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{
     return min(mi_xz, mi_yz)
 end
 
-function redundancy(array_1::Vector{<:Real}, array_2::Vector{<:Real}, array_3::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real
+function redundancy(array_1::Vector{<:Real}, array_2::Vector{<:Real}, array_3::Vector{<:Real};method::String = "inv_ksg", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real
     # Convert vectors to matrices
     mat_1 = vector_to_matrix(array_1)
     mat_2 = vector_to_matrix(array_2)
@@ -87,7 +87,7 @@ end
 
 
 """
-    unique(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real}; method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1) -> Tuple{Real, Real}
+    unique(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real}; method::String = "inv_ksg", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1) -> Tuple{Real, Real}
 
 Compute the unique information that two datasets X and Y contribute individually about a third dataset Z as:
 U(X; Z) = I(X; Z) - R(X, Y; Z)
@@ -99,7 +99,7 @@ where:
 - `X::Vector or Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the first dataset X.
 - `Y::Vector or Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the second dataset Y.
 - `Z::Vector or Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the third dataset Z.
-- `method::String = "inv"` (optional): The method to use for mutual information computation. Options are:
+- `method::String = "inv_ksg"` (optional): The method to use for mutual information computation. Options are:
   - `"knn"`: k-Nearest Neighbors based mutual information estimation.
   - `"histogram"`: Histogram-based mutual information estimation.
   - `"inv"`: Invariant mutual information estimation (default).
@@ -130,7 +130,7 @@ unique_x, unique_y = unique(x, y, z, method="histogram", nbins=10)
 unique_x, unique_y = unique(x, y, z, method="inv", k=3)
 
 """
-function unique(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Tuple{Real, Real}
+function unique(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real};method::String = "inv_ksg", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Tuple{Real, Real}
     # Preprocessing: normalize data layout and extract shapes
     mat_1_canonical = ensure_columns_are_points(mat_1, dim)
     mat_2_canonical = ensure_columns_are_points(mat_2, dim)
@@ -158,7 +158,7 @@ function unique(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Re
     return unique_x, unique_y
 end
 
-function unique(array_1::Vector{<:Real}, array_2::Vector{<:Real}, array_3::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Tuple{Real, Real}
+function unique(array_1::Vector{<:Real}, array_2::Vector{<:Real}, array_3::Vector{<:Real};method::String = "inv_ksg", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Tuple{Real, Real}
     # Convert vectors to matrices
     mat_1 = vector_to_matrix(array_1)
     mat_2 = vector_to_matrix(array_2)
@@ -168,7 +168,7 @@ end
 
 
 """
-    synergy(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1) -> Real
+    synergy(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real};method::String = "inv_ksg", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1) -> Real
 
 Compute the synergy between two dataset sX and Y regarding their shared information about a third dataset Z using the formula:
   S(X, Y; Z) = I(X, Y; Z) - U(X; Z) - U(Y; Z) - R(X, Y; Z)
@@ -182,7 +182,7 @@ Compute the synergy between two dataset sX and Y regarding their shared informat
 - `X:Vector or Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the first dataset ( X ).
 - `Y::Vector or Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the second dataset ( Y ).
 - `Z::Vector or Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the third dataset ( Z ).
-- `method::String = "inv"` (optional): The method to use for mutual and conditional mutual information computation. Options are:
+- `method::String = "inv_ksg"` (optional): The method to use for mutual and conditional mutual information computation. Options are:
   - `"knn"`: k-Nearest Neighbors based estimation.
   - `"histogram"`: Histogram-based estimation.
   - `"inv"`: Invariant estimation (default).
@@ -215,7 +215,7 @@ syn = synergy(x, y, z, method="histogram", nbins=10)
 syn = synergy(x, y, z, method="inv", k=3)
 """
 
-function synergy(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
+function synergy(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real};method::String = "inv_ksg", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
     # Preprocessing: normalize data layout and extract shapes
     mat_1_canonical = ensure_columns_are_points(mat_1, dim)
     mat_2_canonical = ensure_columns_are_points(mat_2, dim)
@@ -240,7 +240,7 @@ function synergy(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:R
     return cmi_xyz - unique_x - unique_y - redundancy_xy_z
 end
 
-function synergy(array_1::Vector{<:Real}, array_2::Vector{<:Real}, array_3::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real
+function synergy(array_1::Vector{<:Real}, array_2::Vector{<:Real}, array_3::Vector{<:Real};method::String = "inv_ksg", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real
     # Convert vectors to matrices
     mat_1 = vector_to_matrix(array_1)
     mat_2 = vector_to_matrix(array_2)
@@ -250,7 +250,7 @@ end
 
 
 """
-    information_quality_ratio(X::Matrix{<:Real}, Y::Matrix{<:Real}; method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1) -> Real
+    information_quality_ratio(X::Matrix{<:Real}, Y::Matrix{<:Real}; method::String = "inv_ksg", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1) -> Real
 
 Compute the Information Quality Ratio (IQR) between two datasets using the formula:
   IQR(X; Y) = (H(X) + H(Y) - H(X, Y)/H(X)
@@ -262,7 +262,7 @@ Compute the Information Quality Ratio (IQR) between two datasets using the formu
 # Arguments
 - `X::Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the first dataset.
 - `Y::Matrix{<:Real}`: A matrix where each column represents a data point, and each row represents a dimension for the second dataset.
-- `method::String = "inv"` (optional): The method to use for entropy and mutual information computation. Options are:
+- `method::String = "inv_ksg"` (optional): The method to use for entropy and mutual information computation. Options are:
   - `"knn"`: k-Nearest Neighbors based estimation.
   - `"histogram"`: Histogram-based estimation.
   - `"inv"`: Invariant estimation (default).

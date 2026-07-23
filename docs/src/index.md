@@ -59,7 +59,7 @@ We found that the **median value of nearest-neighbor distances** multiplied by t
 
 ### Basic Quantities
 - [`entropy`](@ref EntropyInvariant.entropy) - Differential entropy $H(X)$
-- `conditional_entropy` - Conditional entropy $H(X|Y)$
+- `conditional_entropy` - Conditional entropy: `conditional_entropy(X, Y)` computes $H(Y|X)$
 - [`mutual_information`](@ref EntropyInvariant.mutual_information) - Mutual information $I(X;Y)$
 
 ### Advanced Quantities
@@ -67,6 +67,13 @@ We found that the **median value of nearest-neighbor distances** multiplied by t
 - [`normalized_mutual_information`](@ref EntropyInvariant.normalized_mutual_information) - NMI normalized to $[0,1]$
 - [`interaction_information`](@ref EntropyInvariant.interaction_information) - Three-way interaction
 - `information_quality_ratio` - Ratio of mutual to marginal information
+
+### KSG / Frenzel-Pompe Estimators
+
+`mutual_information`, `conditional_mutual_information`, and everything built on them
+default to `method="inv_ksg"`, which calls these directly:
+- [`mutual_information_ksg`](@ref EntropyInvariant.mutual_information_ksg) - KSG mutual information estimator, applied after invariant-measure normalization
+- [`conditional_mutual_information_ksg`](@ref EntropyInvariant.conditional_mutual_information_ksg) - Frenzel-Pompe conditional mutual information estimator, applied after invariant-measure normalization
 
 ### Partial Information Decomposition
 - [`redundancy`](@ref EntropyInvariant.redundancy) - Shared information $R(X,Y;Z)$

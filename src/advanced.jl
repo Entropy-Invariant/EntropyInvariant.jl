@@ -10,7 +10,19 @@
 # - interaction_information: Three-way interaction between variables
 # - information_quality_ratio: Ratio of mutual to marginal information
 
-function conditional_mutual_information(mat_1::Matrix{<:Real}, mat_2::Union{Matrix{<:Real}, Nothing} = nothing, cond_::Union{Matrix{<:Real}, Nothing} = nothing;method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1, optimize::Bool = false)::Real
+"""
+    conditional_mutual_information(X, Y, Z; method::String = "inv_ksg", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1, optimize::Bool = false) -> Real
+
+Compute conditional mutual information I(X;Y|Z) = H(X,Z) + H(Y,Z) - H(X,Y,Z) - H(Z).
+
+`method = "inv_ksg"` (default) normalizes X, Y, Z by their invariant measure and applies
+the Frenzel-Pompe (2007) shared-radius estimator directly, which cancels the
+leading-order k-NN bias that the plug-in formula does not -- notably on outlier-
+contaminated or near-degenerate (low-rank manifold) data. `"inv"`, `"knn"`, and
+`"histogram"` instead build CMI from four independently-estimated entropy terms
+(plug-in formula); use these if you need the individual entropy terms, not just I(X;Y|Z).
+"""
+function conditional_mutual_information(mat_1::Matrix{<:Real}, mat_2::Union{Matrix{<:Real}, Nothing} = nothing, cond_::Union{Matrix{<:Real}, Nothing} = nothing;method::String = "inv_ksg", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1, optimize::Bool = false)::Real
     # Validate arguments
     if cond_ === nothing
         throw(ArgumentError("Conditional value is missing"))
@@ -18,7 +30,11 @@ function conditional_mutual_information(mat_1::Matrix{<:Real}, mat_2::Union{Matr
 
     # Use optimized matrix computation if requested
     if optimize
-        return CMI(mat_1, cond_, k=k, base=base, verbose=verbose, degenerate=degenerate, dim=dim)
+        return CMI(mat_1, cond_, method=method, k=k, base=base, verbose=verbose, degenerate=degenerate, dim=dim)
+    end
+
+    if method == "inv_ksg"
+        return conditional_mutual_information_ksg(mat_1, mat_2, cond_, k=k, base=base, verbose=verbose, dim=dim)
     end
 
     # Preprocessing: normalize data layout and extract shapes
@@ -43,7 +59,7 @@ function conditional_mutual_information(mat_1::Matrix{<:Real}, mat_2::Union{Matr
     return ent_xz + ent_yz - ent_xyz - ent_z
 end
 
-function conditional_mutual_information(array_1::Vector{<:Real}, array_2::Union{Vector{<:Real}, Nothing} = nothing, cond_::Union{Vector{<:Real}, Nothing} = nothing;method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, optimize::Bool = false)::Real
+function conditional_mutual_information(array_1::Vector{<:Real}, array_2::Union{Vector{<:Real}, Nothing} = nothing, cond_::Union{Vector{<:Real}, Nothing} = nothing;method::String = "inv_ksg", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, optimize::Bool = false)::Real
     # Validate arguments
     if cond_ === nothing
         throw(ArgumentError("Conditional value is missing"))
@@ -51,7 +67,7 @@ function conditional_mutual_information(array_1::Vector{<:Real}, array_2::Union{
 
     # Use optimized computation if requested
     if optimize
-        return CMI(array_1, cond_, k=k, base=base, verbose=verbose, degenerate=degenerate, dim=1)
+        return CMI(array_1, cond_, method=method, k=k, base=base, verbose=verbose, degenerate=degenerate, dim=1)
     end
 
     # Convert vectors to matrices
@@ -108,7 +124,14 @@ nmi = normalized_mutual_information(x, y, method="histogram", nbins=10)
 # Using invariant method
 nmi = normalized_mutual_information(x, y, method="inv", k=3)
 """
-function normalized_mutual_information(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
+function normalized_mutual_information(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real};method::String = "inv_ksg", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
+    if method == "inv_ksg"
+        ent_1 = entropy(mat_1, method="inv", k=k, base=base, dim=dim)
+        ent_2 = entropy(mat_2, method="inv", k=k, base=base, dim=dim)
+        mi = max(0, mutual_information_ksg(mat_1, mat_2, k=k, base=base, verbose=verbose, dim=dim))
+        return mi / ((ent_1 + ent_2) / 2)
+    end
+
     # Preprocessing: normalize data layout and extract shapes
     mat_1_canonical = ensure_columns_are_points(mat_1, dim)
     mat_2_canonical = ensure_columns_are_points(mat_2, dim)
@@ -132,7 +155,7 @@ function normalized_mutual_information(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Re
     return mi / avg_entropy
 end
 
-function normalized_mutual_information(array_1::Vector{<:Real}, array_2::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real
+function normalized_mutual_information(array_1::Vector{<:Real}, array_2::Vector{<:Real};method::String = "inv_ksg", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real
     # Convert vectors to matrices
     mat_1 = vector_to_matrix(array_1)
     mat_2 = vector_to_matrix(array_2)
@@ -186,7 +209,15 @@ ii = interaction_information(x, y, z, method="histogram", nbins=10)
 # Using invariant method
 ii = interaction_information(x, y, z, method="inv", k=3)
 """
-function interaction_information(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
+function interaction_information(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real};method::String = "inv_ksg", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
+    # II(X;Y;Z) = I(X;Y) - I(X;Y|Z), using the bias-cancelling KSG/Frenzel-Pompe
+    # estimators for both terms rather than the 7-term plug-in identity below.
+    if method == "inv_ksg"
+        mi_12 = mutual_information_ksg(mat_1, mat_2, k=k, base=base, verbose=verbose, dim=dim)
+        cmi_123 = conditional_mutual_information_ksg(mat_1, mat_2, mat_3, k=k, base=base, verbose=verbose, dim=dim)
+        return mi_12 - cmi_123
+    end
+
     # Preprocessing: normalize data layout and extract shapes
     mat_1_canonical = ensure_columns_are_points(mat_1, dim)
     mat_2_canonical = ensure_columns_are_points(mat_2, dim)
@@ -212,7 +243,7 @@ function interaction_information(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, m
     return ent_1 + ent_2 + ent_3 - ent_12 - ent_13 - ent_23 + ent_123
 end
 
-function interaction_information(array_1::Vector{<:Real}, array_2::Vector{<:Real}, array_3::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real
+function interaction_information(array_1::Vector{<:Real}, array_2::Vector{<:Real}, array_3::Vector{<:Real};method::String = "inv_ksg", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real
     # Convert vectors to matrices
     mat_1 = vector_to_matrix(array_1)
     mat_2 = vector_to_matrix(array_2)
@@ -265,7 +296,13 @@ iqr = information_quality_ratio(x, y, method="histogram", nbins=10)
 iqr = information_quality_ratio(x, y, method="inv", k=3)
 """
 
-function information_quality_ratio(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
+function information_quality_ratio(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real};method::String = "inv_ksg", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
+    if method == "inv_ksg"
+        ent_1 = entropy(mat_1, method="inv", k=k, base=base, dim=dim)
+        mi = mutual_information_ksg(mat_1, mat_2, k=k, base=base, verbose=verbose, dim=dim)
+        return mi / ent_1
+    end
+
     # Preprocessing: normalize data layout and extract shapes
     mat_1_canonical = ensure_columns_are_points(mat_1, dim)
     mat_2_canonical = ensure_columns_are_points(mat_2, dim)
@@ -286,7 +323,7 @@ function information_quality_ratio(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real};
     return mi / ent_1
 end
 
-function information_quality_ratio(array_1::Vector{<:Real}, array_2::Vector{<:Real};method::String = "inv", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real
+function information_quality_ratio(array_1::Vector{<:Real}, array_2::Vector{<:Real};method::String = "inv_ksg", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real
     # Convert vectors to matrices
     mat_1 = vector_to_matrix(array_1)
     mat_2 = vector_to_matrix(array_2)

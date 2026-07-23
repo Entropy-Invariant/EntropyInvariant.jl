@@ -83,10 +83,34 @@ Most functions accept these optional parameters:
 |-----------|---------|-------------|
 | `k` | 3 | Number of nearest neighbors |
 | `base` | `e` | Logarithm base (e, 2, 10, etc.) |
-| `method` | `"inv"` | Estimation method: `"inv"`, `"knn"`, `"histogram"` |
+| `method` | `"inv"` for `entropy`; `"inv_ksg"` for MI/CMI-derived functions | See below |
 | `dim` | 1 | Data layout (1=rows as points, 2=columns as points) |
 | `verbose` | `false` | Print computation details |
-| `degenerate` | `false` | Handle degenerate cases (adds 1 to distances) |
+| `degenerate` | `false` | Handle degenerate cases (adds 1 to distances). Ignored by `"inv_ksg"`. |
+
+### Two normalizations, two algorithms
+
+Every quantity in this package starts by normalizing each variable by its **invariant
+measure** (median nearest-neighbor distance) rather than `std` -- that normalization is
+what buys scale/translation invariance and, unlike `std`, doesn't get thrown off by a
+handful of extreme outliers.
+
+For a single variable's entropy, there is only one sensible algorithm to run *after*
+normalizing (Kozachenko-Leonenko). But mutual information and everything built on it
+(`mutual_information`, `conditional_mutual_information`, `conditional_entropy`,
+`normalized_mutual_information`, `interaction_information`, `information_quality_ratio`,
+`redundancy`/`unique`/`synergy`, and the `MI`/`CMI` matrices) can be computed two ways
+once the data is normalized:
+
+- **naively differencing entropies** (`method="inv"`) -- `I(X;Y) = H(X) + H(Y) - H(X,Y)`,
+  three independent k-NN searches, each with its own finite-sample bias
+- **KSG / Frenzel-Pompe** (`method="inv_ksg"`, the **default**) -- one shared k-NN search
+  radius reused across all terms, so the leading-order bias cancels algebraically instead
+  of compounding
+
+`method="inv_ksg"` is both more accurate and the default for all of these functions.
+`method="inv"` remains available when you specifically need the individual entropy terms
+(e.g. `H(X)`, `H(X,Y)` separately), not just their difference.
 
 ### Computing Mutual Information
 
@@ -95,12 +119,15 @@ n = 1000
 x = rand(n)
 y = 2*x + 0.1*rand(n)  # y depends on x
 
-# Mutual information
+# Mutual information (method="inv_ksg" by default)
 I_xy = mutual_information(x, y)
 println("I(X;Y) = $I_xy")
 
 # With different parameters
 I_xy = mutual_information(x, y, k=5, base=2)  # bits instead of nats
+
+# The plug-in ("inv") estimator is still available directly
+I_xy_plugin = mutual_information(x, y, method="inv")
 ```
 
 ### Conditional Entropy and Mutual Information
@@ -111,8 +138,8 @@ x = rand(n)
 y = rand(n)
 z = x + y + 0.1*rand(n)  # z depends on both x and y
 
-# Conditional entropy: H(Z|X)
-H_z_given_x = conditional_entropy(z, x)
+# Conditional entropy: H(Z|X)  -- conditional_entropy(X, Y) = H(Y|X)
+H_z_given_x = conditional_entropy(x, z)
 
 # Conditional mutual information: I(X;Y|Z)
 I_xy_given_z = conditional_mutual_information(x, y, z)
@@ -153,6 +180,26 @@ println("Translated:  $H3")
 println("Both:        $H4")
 # All values should be approximately equal!
 ```
+
+The same holds for mutual information -- and independently for each variable, not just
+jointly:
+
+```julia
+n = 2000
+x = rand(n)
+y = 2*x + 0.1*rand(n)
+
+I1 = mutual_information(x, y)
+I2 = mutual_information(1e6*x .- 5, 1e-6*y .+ 3)   # very different, independent rescalings
+
+println("Original: $I1")
+println("Rescaled: $I2")
+# Equal, even though x and y were rescaled by completely different factors
+```
+
+See the [Tutorial](@ref) for why this matters in practice -- a handful of extreme
+outliers is where this package's normalization has a real, measurable edge over the
+`std`-based normalization most other MI/CMI implementations use.
 
 ## Handling Degenerate Cases
 

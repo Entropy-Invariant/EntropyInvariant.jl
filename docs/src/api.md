@@ -8,10 +8,22 @@
 EntropyInvariant.entropy
 ```
 
+### Conditional Entropy
+
+```@docs
+EntropyInvariant.conditional_entropy
+```
+
 ### Mutual Information
 
 ```@docs
 EntropyInvariant.mutual_information
+```
+
+### Conditional Mutual Information
+
+```@docs
+EntropyInvariant.conditional_mutual_information
 ```
 
 ### Normalized Mutual Information
@@ -36,6 +48,13 @@ EntropyInvariant.redundancy
 
 ```@docs
 EntropyInvariant.unique
+```
+
+### KSG / Frenzel-Pompe Estimators
+
+```@docs
+EntropyInvariant.mutual_information_ksg
+EntropyInvariant.conditional_mutual_information_ksg
 ```
 
 ### Optimized Matrix Functions
