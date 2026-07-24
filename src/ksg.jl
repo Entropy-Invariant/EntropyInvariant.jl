@@ -34,6 +34,48 @@ function _invariant_normalize_row(mat::Matrix{<:Real})::Matrix{Float64}
     return Matrix{Float64}(mat) ./ measure
 end
 
+# Raise a clear error if any marginal/subspace neighbor count is 0.
+#
+# A count of 0 means the shared KSG radius was degenerate (exactly 0) at that
+# point -- i.e. at least k+1 points are exact duplicates in the joint space,
+# most often because several dimensions are simultaneously sparse (e.g. many
+# rows are all zero). digamma(0) is -Inf, so this would otherwise propagate
+# silently into NaN.
+function _check_no_degenerate_counts(counts_by_name::Pair{String,<:Vector{<:Integer}}...)
+    for (name, counts) in counts_by_name
+        n_degenerate = count(==(0), counts)
+        if n_degenerate > 0
+            throw(ArgumentError(
+                "Shared KSG radius is degenerate for $n_degenerate point(s) " *
+                "in the '$name' subspace: at least k+1 points coincide " *
+                "exactly in the joint space (e.g. multiple all-zero/duplicate " *
+                "rows). Cannot compute a finite entropy estimate for these " *
+                "points -- consider deduplicating, adding jitter, or " *
+                "excluding the offending dimension(s)."
+            ))
+        end
+    end
+end
+
+# H(Xi) in nats from an already invariant-normalized 1xn row.
+#
+# Used for I(Xi; Xi) = H(Xi): pairing a variable with itself is never run
+# through the shared-radius KSG trick below, since any duplicate value in Xi
+# (e.g. repeated zeros in sparse data) then collides with itself in the
+# joint (Xi, Xi) space, making the shared radius degenerate far more easily
+# than a genuine two-variable pair would. The plain k-NN entropy estimate
+# here tolerates duplicates by dropping degenerate (zero-distance) points
+# from the log-distance average -- the same behavior as method="inv" --
+# instead of hard-failing.
+function _entropy_nats_from_normalized(col::Matrix{Float64}, k::Int)::Float64
+    n = size(col, 2)
+    tree = KDTree(col, Chebyshev())
+    _, dists = knn(tree, col, k + 1, true)
+    kth_dists = [d[k + 1] for d in dists]
+    log_dists = log.(filter(!=(0), kth_dists))
+    return compute_knn_entropy_nats(log_dists, 1, k, n)
+end
+
 # KSG MI in nats, given `x`, `y` already invariant-normalized, each a 1×n matrix
 # (canonical format: one row, n columns).
 function _mi_ksg_from_normalized(x::Matrix{Float64}, y::Matrix{Float64}, k::Int)::Float64
@@ -50,6 +92,7 @@ function _mi_ksg_from_normalized(x::Matrix{Float64}, y::Matrix{Float64}, k::Int)
 
     nx = [inrangecount(x_tree, x[:, i], eps[i] - _STRICT_RADIUS_EPS) for i in 1:n]
     ny = [inrangecount(y_tree, y[:, i], eps[i] - _STRICT_RADIUS_EPS) for i in 1:n]
+    _check_no_degenerate_counts("x" => nx, "y" => ny)
 
     return digamma(n) + digamma(k) - mean(digamma.(nx) .+ digamma.(ny))
 end
@@ -74,6 +117,7 @@ function _cmi_fp_from_normalized(x::Matrix{Float64}, y::Matrix{Float64}, z::Matr
     nxz = [inrangecount(xz_tree, xz[:, i], eps[i] - _STRICT_RADIUS_EPS) for i in 1:n]
     nyz = [inrangecount(yz_tree, yz[:, i], eps[i] - _STRICT_RADIUS_EPS) for i in 1:n]
     nz  = [inrangecount(z_tree,  z[:, i],  eps[i] - _STRICT_RADIUS_EPS) for i in 1:n]
+    _check_no_degenerate_counts("x,z" => nxz, "y,z" => nyz, "z" => nz)
 
     return digamma(k) - mean(digamma.(nxz) .+ digamma.(nyz) .- digamma.(nz))
 end
@@ -107,8 +151,18 @@ function mutual_information_ksg(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}; k:
     verbose && log_computation_info([shape1, shape2], base)
 
     x = _invariant_normalize_row(mat_1_canonical)
-    y = _invariant_normalize_row(mat_2_canonical)
 
+    if mat_1_canonical == mat_2_canonical
+        # I(X;X) = H(X) exactly. Skip the shared-radius trick: pairing X with
+        # itself makes any duplicate value in X collide with itself in the
+        # joint (X, X) space, so it hits the degenerate-radius case far more
+        # easily than a genuine two-variable pair -- see
+        # _entropy_nats_from_normalized above.
+        mi_nats = _entropy_nats_from_normalized(x, k)
+        return convert_to_base(mi_nats, base)
+    end
+
+    y = _invariant_normalize_row(mat_2_canonical)
     mi_nats = _mi_ksg_from_normalized(x, y, k)
     return convert_to_base(mi_nats, base)
 end

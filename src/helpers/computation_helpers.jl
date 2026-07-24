@@ -33,9 +33,23 @@ r_x = compute_invariant_measure(x)
 """
 function compute_invariant_measure(data::Vector{<:Real})::Real
     non_zero_data = filter(x -> x != 0, data)
+    if length(non_zero_data) < 2
+        return 1.0
+    end
     sorted_data = sort(non_zero_data)
     nn_distances = nn1(sorted_data)
     median_distance = median(nn_distances)
+    if median_distance == 0
+        n_unique = length(Base.unique(non_zero_data))
+        throw(ArgumentError(
+            "Invariant measure is degenerate (median nearest-neighbor " *
+            "distance is 0): $(length(non_zero_data)) non-zero values but " *
+            "only $n_unique unique among them, so at least half of the " *
+            "sorted non-zero values are exact duplicates. Cannot normalize " *
+            "this dimension -- consider deduplicating, adding jitter, or " *
+            "excluding it from the analysis."
+        ))
+    end
     num_points = length(non_zero_data)
     return median_distance * num_points
 end
@@ -159,7 +173,7 @@ Precomputed logarithms of unit ball volumes for computational efficiency.
 const LOG_UNIT_BALL_VOLUMES = log.(UNIT_BALL_VOLUMES)
 
 """
-    compute_knn_entropy_nats(log_distances::Vector{Float64}, dimension::Int, k::Int) -> Float64
+    compute_knn_entropy_nats(log_distances::Vector{Float64}, dimension::Int, k::Int, num_points::Int) -> Float64
 
 Compute k-NN entropy estimate in nats (natural logarithm base).
 
@@ -176,9 +190,17 @@ where:
 - k: number of neighbors
 
 # Arguments
-- `log_distances::Vector{Float64}`: Logarithms of k-th nearest neighbor distances
+- `log_distances::Vector{Float64}`: Logarithms of k-th nearest neighbor distances.
+  Points whose k-th neighbor distance is exactly 0 (e.g. duplicates) are
+  dropped from this average -- but that is a separate numerical workaround
+  for the log(0) singularity, and must not shrink `num_points` below.
 - `dimension::Int`: Dimensionality of the space (1, 2, or 3)
 - `k::Int`: Number of neighbors used
+- `num_points::Int`: Total number of points the k-NN search was run over.
+  This is the N in ψ(N): it reflects the sample size behind the density
+  estimate and is independent of how many individual points had a
+  degenerate (zero) k-th-neighbor distance and were excluded from
+  `log_distances` above.
 
 # Returns
 - `Float64`: Entropy estimate in nats (base e)
@@ -190,25 +212,25 @@ Estimating mutual information. Physical Review E, 69(6), 066138.
 # Example
 ```julia
 log_dists = [log(0.1), log(0.2), log(0.15), ...]  # n distances
-H = compute_knn_entropy_nats(log_dists, 2, 3)  # 2D space, k=3
+H = compute_knn_entropy_nats(log_dists, 2, 3, length(log_dists))  # 2D space, k=3
 ```
 """
 function compute_knn_entropy_nats(
     log_distances::Vector{Float64},
     dimension::Int,
-    k::Int
+    k::Int,
+    num_points::Int
 )::Float64
     if dimension < 1 || dimension > 3
         throw(ArgumentError("Unit ball volume only available for dimensions 1-3, got $dimension"))
     end
 
-    n = length(log_distances)
     mean_log_dist = mean(log_distances)
     log_volume = LOG_UNIT_BALL_VOLUMES[dimension]
 
     entropy = (dimension * mean_log_dist +
                log_volume +
-               digamma(n) -
+               digamma(num_points) -
                digamma(k))
 
     return entropy

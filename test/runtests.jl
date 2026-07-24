@@ -1,5 +1,6 @@
 using EntropyInvariant
 using Test
+using Random
 
 @testset "EntropyInvariant.jl" begin
     # Dimensionality and consistency tests
@@ -205,4 +206,114 @@ end
 
     cmi_mat_inv = EntropyInvariant.CMI(hcat(x, y), z, method="inv")
     @test all(isfinite, cmi_mat_inv)
+end
+
+@testset "Matrix/scalar consistency on sparse data" begin
+    # Regression tests for a bug where MI()/CMI() (matrix fast-path) computed
+    # the invariant measure inline, without EntropyInvariant's own
+    # zero-filtering (compute_invariant_measure filters exact zeros before
+    # taking the median nearest-neighbor distance -- sparse data, common in
+    # real signals like mass-spec bins, is mostly zeros). This silently
+    # diverged from -- and eventually crashed relative to -- the scalar
+    # mutual_information()/conditional_mutual_information() functions, which
+    # always went through the correct, zero-filtered helper. A second,
+    # separate bug (digamma(n) using the post-zero-filtering distance count
+    # instead of the true sample size) compounded this for method="inv".
+
+    make_sparse_column(n) = begin
+        col = zeros(n)
+        nonzero_idx = randperm(n)[1:(n ÷ 5)]
+        col[nonzero_idx] = rand(length(nonzero_idx)) .* 10 .+ 1.0
+        col
+    end
+
+    n = 500
+    x = make_sparse_column(n)
+    y = make_sparse_column(n)
+    z = rand(n) .* 10 .+ 1.0  # dense conditioning variable, no zeros -- see
+                              # "Degenerate KSG radius" testset below for why
+
+    for method in ("inv", "inv_ksg")
+        data = hcat(x, y)
+        cmi_mat = EntropyInvariant.CMI(data, z, method=method, k=5)
+        cmi_direct = conditional_mutual_information(x, y, z, method=method, k=5)
+        @test all(isfinite, cmi_mat)
+        @test abs(cmi_mat[1, 2] - cmi_direct) < 1e-9
+    end
+
+    # method="inv": no shared radius involved, so heavy (~80%) sparsity on
+    # both x and y (no conditioning z to break ties) is fine here.
+    mi_mat_inv = EntropyInvariant.MI(hcat(x, y), method="inv", k=5)
+    mi_direct_inv = mutual_information(x, y, method="inv", k=5)
+    @test all(isfinite, mi_mat_inv)
+    @test abs(mi_mat_inv[1, 2] - mi_direct_inv) < 1e-9
+
+    # method="inv_ksg": with no conditioning z, x and y both being heavily
+    # sparse would make the shared KSG radius legitimately degenerate (see
+    # "Degenerate KSG radius" testset) -- that's correct behavior, not a
+    # bug, so this uses much lighter (~2%) sparsity instead.
+    make_mildly_sparse_column(n) = begin
+        col = zeros(n)
+        nonzero_idx = randperm(n)[1:round(Int, n * 0.98)]
+        col[nonzero_idx] = rand(length(nonzero_idx)) .* 10 .+ 1.0
+        col
+    end
+    mx = make_mildly_sparse_column(n)
+    my = make_mildly_sparse_column(n)
+    mi_mat_ksg = EntropyInvariant.MI(hcat(mx, my), method="inv_ksg", k=5)
+    mi_direct_ksg = mutual_information(mx, my, method="inv_ksg", k=5)
+    @test all(isfinite, mi_mat_ksg)
+    @test abs(mi_mat_ksg[1, 2] - mi_direct_ksg) < 1e-9
+end
+
+@testset "Degenerate invariant measure fails loudly" begin
+    # A column where >=half the non-zero values are exact duplicates, so the
+    # median nearest-neighbor distance is exactly 0.
+    duplicate_heavy = Float64.(rand(1:3, 200))
+    x = rand(200)
+
+    @test_throws ArgumentError EntropyInvariant.compute_invariant_measure(duplicate_heavy)
+    @test_throws ArgumentError EntropyInvariant.MI(hcat(duplicate_heavy, x))
+    @test_throws ArgumentError EntropyInvariant.CMI(hcat(duplicate_heavy, x), rand(200))
+end
+
+@testset "Degenerate KSG radius fails loudly" begin
+    # x, y both ~80% zero at independently-chosen positions: by the
+    # pigeonhole principle, a large block of points must be (0, 0) exactly,
+    # making the shared KSG radius (and thus digamma(0) = -Inf) degenerate.
+    n = 500
+    make_col() = begin
+        col = zeros(n)
+        nonzero_idx = randperm(n)[1:(n ÷ 5)]
+        col[nonzero_idx] = rand(length(nonzero_idx)) .* 10 .+ 1.0
+        col
+    end
+    x = make_col()
+    y = make_col()
+
+    @test_throws ArgumentError mutual_information_ksg(x, y, k=5)
+    @test_throws ArgumentError EntropyInvariant.MI(hcat(x, y), method="inv_ksg", k=5)
+
+    # z also sparse here (unlike the dense z above), so the full (x, y, z)
+    # joint space is degenerate too.
+    z = make_col()
+    @test_throws ArgumentError EntropyInvariant.CMI(hcat(x, y), z, method="inv_ksg", k=5)
+end
+
+@testset "Self-MI diagonal special case" begin
+    # I(X;X) = H(X): pairing a sparse/duplicate-heavy variable with itself
+    # should not hit the degenerate-radius error the previous testset
+    # exercises deliberately -- MI()'s diagonal and mutual_information_ksg(x,
+    # x) both special-case this instead of running the shared-radius trick.
+    n = 500
+    x = zeros(n)
+    nonzero_idx = randperm(n)[1:(n ÷ 5)]
+    x[nonzero_idx] = rand(length(nonzero_idx)) .* 10 .+ 1.0
+
+    self_mi = mutual_information_ksg(x, x, k=5)
+    @test isfinite(self_mi)
+
+    mi_mat = EntropyInvariant.MI(hcat(x, rand(n)), method="inv_ksg", k=5)
+    @test isfinite(mi_mat[1, 1])
+    @test abs(mi_mat[1, 1] - self_mi) < 1e-9
 end

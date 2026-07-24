@@ -89,7 +89,7 @@ function entropy_knn(mat_::Matrix{<:Real}; k::Int = 3, base::Real = e, verbose::
     log_dists = extract_nonzero_log_distances(knn_result.kth_distances, noise)
 
     # Entropy computation using Kraskov formula
-    entropy_nats = compute_knn_entropy_nats(log_dists, shape.num_dimensions, k)
+    entropy_nats = compute_knn_entropy_nats(log_dists, shape.num_dimensions, k, shape.num_points)
     return convert_to_base(entropy_nats, base)
 end
 
@@ -124,7 +124,7 @@ function entropy_inv(mat_::Matrix{<:Real}; k::Int = 3, base::Real = e, verbose::
     log_dists = extract_nonzero_log_distances(knn_result.kth_distances, noise)
 
     # Entropy computation using Kraskov formula
-    entropy_nats = compute_knn_entropy_nats(log_dists, shape.num_dimensions, k)
+    entropy_nats = compute_knn_entropy_nats(log_dists, shape.num_dimensions, k, shape.num_points)
     return convert_to_base(entropy_nats, base)
 end
 

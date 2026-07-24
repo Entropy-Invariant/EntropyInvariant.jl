@@ -66,7 +66,11 @@ function MI(a::Matrix{<:Real}; method::String = "inv_ksg", k::Int = 3, base::Rea
         all_mi_ij = zeros(m, m)
         for i in 1:m
             for j in i:m
-                mi_nats = _mi_ksg_from_normalized(Matrix{Float64}(all_a_ri[i]), Matrix{Float64}(all_a_ri[j]), k)
+                mi_nats = if i == j
+                    _entropy_nats_from_normalized(Matrix{Float64}(all_a_ri[i]), k)
+                else
+                    _mi_ksg_from_normalized(Matrix{Float64}(all_a_ri[i]), Matrix{Float64}(all_a_ri[j]), k)
+                end
                 all_mi_ij[i, j] = mi_nats
                 all_mi_ij[j, i] = mi_nats
             end
