@@ -284,6 +284,13 @@ CMI_matrix = EntropyInvariant.CMI(data, z)
 
 println("\nPairwise CMI given Z:")
 display(round.(CMI_matrix, digits=3))
+
+# For large matrices (hundreds of dimensions), each dimension's own k-NN tree
+# is built once and reused across all pairs; `parallel=true` additionally
+# distributes the remaining O(m^2) per-pair work across Threads.@threads
+# (start Julia with `--threads=auto` or set JULIA_NUM_THREADS for this to
+# actually parallelize).
+MI_matrix_parallel = EntropyInvariant.MI(data, parallel=true)
 ```
 
 ## Example 9: Comparing Estimation Methods

@@ -12,7 +12,7 @@
 
 """
     MI(X::Matrix{<:Real}; k::Int = 3, base::Real = e, verbose::Bool = false,
-       degenerate::Bool = false, dim::Int = 1) -> Matrix{<:Real}
+       degenerate::Bool = false, dim::Int = 1, parallel::Bool = false) -> Matrix{<:Real}
 
 Compute the pairwise mutual information (MI) matrix for all pairs of dimensions in a dataset,
 using the k-nearest neighbors (k-NN) invariant measure.
@@ -26,6 +26,13 @@ For each pair of dimensions (i, j), computes: MI(Xᵢ; Xⱼ) = H(Xᵢ) + H(Xⱼ)
 - `verbose::Bool = false` (optional): If `true`, prints information about the dataset. Defaults to `false`.
 - `degenerate::Bool = false` (optional): If `true`, adds noise to distances for degenerate cases. Defaults to `false`.
 - `dim::Int = 1` (optional): Data layout: `dim=1` for rows as points (default), `dim=2` for columns as points.
+- `parallel::Bool = false` (optional, `method="inv_ksg"` only): distribute the
+  O(m²) per-pair shared-radius work across `Threads.@threads`. Requires
+  Julia to have been started with more than one thread (`julia
+  --threads=auto`, or the `JULIA_NUM_THREADS` environment variable) --
+  otherwise this is a no-op. Each dimension's marginal k-NN tree is always
+  built once, up front, and shared read-only across all pairs regardless of
+  this setting.
 
 # Returns
 - `Matrix{<:Real}`: A symmetric matrix M where M[i,j] is the mutual information between dimensions i and j.
@@ -44,7 +51,7 @@ data_cols = rand(5, 1000)  # 5 dimensions × 1000 points
 mi_matrix = MI(data_cols, dim=2)
 ```
 """
-function MI(a::Matrix{<:Real}; method::String = "inv_ksg", k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Matrix{<:Real}
+function MI(a::Matrix{<:Real}; method::String = "inv_ksg", k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1, parallel::Bool = false)::Matrix{<:Real}
     if dim == 2
        a = Matrix{Float64}(transpose(a))
     end
@@ -63,14 +70,27 @@ function MI(a::Matrix{<:Real}; method::String = "inv_ksg", k::Int = 3, base::Rea
     all_a_ri = [reshape(a[:,i]/all_ri[i], 1, n) for i in 1:m]
 
     if method == "inv_ksg"
+        # Each dimension's marginal (1D) tree only depends on that dimension,
+        # so build it once here rather than re-building it for every pair it
+        # appears in (each dimension appears in m pairs).
+        marginal_trees = [KDTree(Matrix{Float64}(all_a_ri[i]), Chebyshev()) for i in 1:m]
+        pairs = [(i, j) for i in 1:m for j in i:m]
         all_mi_ij = zeros(m, m)
-        for i in 1:m
-            for j in i:m
-                mi_nats = if i == j
-                    _entropy_nats_from_normalized(Matrix{Float64}(all_a_ri[i]), k)
-                else
-                    _mi_ksg_from_normalized(Matrix{Float64}(all_a_ri[i]), Matrix{Float64}(all_a_ri[j]), k)
-                end
+
+        compute_pair = (i, j) -> i == j ?
+            _entropy_nats_from_normalized(Matrix{Float64}(all_a_ri[i]), k) :
+            _mi_ksg_pair(Matrix{Float64}(all_a_ri[i]), Matrix{Float64}(all_a_ri[j]), marginal_trees[i], marginal_trees[j], k)
+
+        if parallel
+            Threads.@threads for idx in eachindex(pairs)
+                i, j = pairs[idx]
+                mi_nats = compute_pair(i, j)
+                all_mi_ij[i, j] = mi_nats
+                all_mi_ij[j, i] = mi_nats
+            end
+        else
+            for (i, j) in pairs
+                mi_nats = compute_pair(i, j)
                 all_mi_ij[i, j] = mi_nats
                 all_mi_ij[j, i] = mi_nats
             end
@@ -193,7 +213,7 @@ cmi_matrix = CMI(data, conditioning_var, k=5, verbose=true)
 data_t = rand(100, 3)  # Transposed dataset
 cmi_matrix = CMI(data_t, conditioning_var, k=3, dim=2)
 """
-function CMI(a::Matrix{<:Real}, b::Vector{<:Real}; method::String = "inv_ksg", base::Real = e, k::Int = 3, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Matrix{<:Real}
+function CMI(a::Matrix{<:Real}, b::Vector{<:Real}; method::String = "inv_ksg", base::Real = e, k::Int = 3, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1, parallel::Bool = false)::Matrix{<:Real}
     if dim == 2
         a = Matrix{Float64}(transpose(a))
     end
@@ -215,10 +235,30 @@ function CMI(a::Matrix{<:Real}, b::Vector{<:Real}; method::String = "inv_ksg", b
 
     if method == "inv_ksg"
         z_col = Matrix{Float64}(b_rz)
+
+        # Each dimension's (Xi, Z) tree only depends on that dimension (and
+        # Z, which never changes), so build it once here rather than
+        # re-building it -- and the Z-only tree -- for every pair.
+        z_tree = KDTree(z_col, Chebyshev())
+        iz_trees = [KDTree(vcat(Matrix{Float64}(all_a_ri[i]), z_col), Chebyshev()) for i in 1:m]
+        pairs = [(i, j) for i in 1:m for j in i:m]
         all_cmi_ijz = zeros(m, m)
-        for i in 1:m
-            for j in i:m
-                cmi_nats = _cmi_fp_from_normalized(Matrix{Float64}(all_a_ri[i]), Matrix{Float64}(all_a_ri[j]), z_col, k)
+
+        compute_pair = (i, j) -> _cmi_fp_pair(
+            Matrix{Float64}(all_a_ri[i]), Matrix{Float64}(all_a_ri[j]), z_col,
+            iz_trees[i], iz_trees[j], z_tree, k
+        )
+
+        if parallel
+            Threads.@threads for idx in eachindex(pairs)
+                i, j = pairs[idx]
+                cmi_nats = compute_pair(i, j)
+                all_cmi_ijz[i, j] = cmi_nats
+                all_cmi_ijz[j, i] = cmi_nats
+            end
+        else
+            for (i, j) in pairs
+                cmi_nats = compute_pair(i, j)
                 all_cmi_ijz[i, j] = cmi_nats
                 all_cmi_ijz[j, i] = cmi_nats
             end
@@ -337,12 +377,12 @@ function CMI(a::Matrix{<:Real}, b::Vector{<:Real}; method::String = "inv_ksg", b
     return all_cmi_ijz*log(base, e)
 end
                                                                                                                                     
-function CMI(a::Matrix{<:Real}, b::Matrix{<:Real}; method::String = "inv_ksg", base::Real = e, k::Int = 3, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Matrix{<:Real}
+function CMI(a::Matrix{<:Real}, b::Matrix{<:Real}; method::String = "inv_ksg", base::Real = e, k::Int = 3, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1, parallel::Bool = false)::Matrix{<:Real}
     n2 = length(b[:,1])
     d2 = length(b[1,:])
     if (n2 != 1) & (dim == 2) | ((d2 != 1) & (dim == 1))
         throw(ArgumentError("Conditional arrays must contain the same number of points in one dimension"))
     end
-    return CMI(a, vec(b), method=method, base=base, k=k, verbose=verbose, degenerate=degenerate, dim=dim)
+    return CMI(a, vec(b), method=method, base=base, k=k, verbose=verbose, degenerate=degenerate, dim=dim, parallel=parallel)
 end
 

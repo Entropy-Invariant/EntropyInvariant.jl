@@ -76,15 +76,20 @@ function _entropy_nats_from_normalized(col::Matrix{Float64}, k::Int)::Float64
     return compute_knn_entropy_nats(log_dists, 1, k, n)
 end
 
-# KSG MI in nats, given `x`, `y` already invariant-normalized, each a 1×n matrix
-# (canonical format: one row, n columns).
-function _mi_ksg_from_normalized(x::Matrix{Float64}, y::Matrix{Float64}, k::Int)::Float64
+# KSG MI in nats, given `x`, `y` already invariant-normalized (each a 1×n
+# matrix, canonical format: one row, n columns), plus their two PRE-BUILT
+# marginal (1D) KDTrees.
+#
+# Splitting out the marginal trees lets a caller computing many pairs over
+# the same set of dimensions (the `MI` matrix function in optimized.jl) build
+# each dimension's 1D tree once and reuse it across every pair it appears in,
+# instead of rebuilding it from scratch for every single pair. Only the
+# joint (2D) tree below is genuinely pair-specific.
+function _mi_ksg_pair(x::Matrix{Float64}, y::Matrix{Float64}, x_tree, y_tree, k::Int)::Float64
     n = size(x, 2)
     xy = vcat(x, y)
 
     joint_tree = KDTree(xy, Chebyshev())
-    x_tree = KDTree(x, Chebyshev())
-    y_tree = KDTree(y, Chebyshev())
 
     # Shared radius: k-th neighbor distance in the joint (normalized) space.
     _, dists = knn(joint_tree, xy, k + 1, true)
@@ -97,18 +102,29 @@ function _mi_ksg_from_normalized(x::Matrix{Float64}, y::Matrix{Float64}, k::Int)
     return digamma(n) + digamma(k) - mean(digamma.(nx) .+ digamma.(ny))
 end
 
-# Frenzel-Pompe CMI in nats, given `x`, `y`, `z` already invariant-normalized, each a
-# 1×n matrix (canonical format: one row, n columns).
-function _cmi_fp_from_normalized(x::Matrix{Float64}, y::Matrix{Float64}, z::Matrix{Float64}, k::Int)::Float64
+# KSG MI in nats, given `x`, `y` already invariant-normalized, each a 1×n matrix
+# (canonical format: one row, n columns).
+function _mi_ksg_from_normalized(x::Matrix{Float64}, y::Matrix{Float64}, k::Int)::Float64
+    return _mi_ksg_pair(x, y, KDTree(x, Chebyshev()), KDTree(y, Chebyshev()), k)
+end
+
+# Frenzel-Pompe CMI in nats, given `x`, `y`, `z` already invariant-normalized
+# (each a 1×n matrix), plus PRE-BUILT (X,Z) and (Y,Z) subspace trees and the
+# Z tree.
+#
+# Splitting these out lets a caller computing many pairs against the same
+# conditioning variable Z (the `CMI` matrix function in optimized.jl) build
+# each dimension's (Xi, Z) tree once and the single Z tree once, and reuse
+# them across every pair -- instead of rebuilding all three (plus Z, which
+# never changes) from scratch for every single pair. Only the full joint
+# (3D) tree below is genuinely pair-specific.
+function _cmi_fp_pair(x::Matrix{Float64}, y::Matrix{Float64}, z::Matrix{Float64}, xz_tree, yz_tree, z_tree, k::Int)::Float64
     n = size(x, 2)
     xyz = vcat(x, y, z)
     xz = vcat(x, z)
     yz = vcat(y, z)
 
     full_tree = KDTree(xyz, Chebyshev())
-    xz_tree = KDTree(xz, Chebyshev())
-    yz_tree = KDTree(yz, Chebyshev())
-    z_tree = KDTree(z, Chebyshev())
 
     # Shared radius: k-th neighbor distance in the full joint (normalized) space.
     _, dists = knn(full_tree, xyz, k + 1, true)
@@ -120,6 +136,15 @@ function _cmi_fp_from_normalized(x::Matrix{Float64}, y::Matrix{Float64}, z::Matr
     _check_no_degenerate_counts("x,z" => nxz, "y,z" => nyz, "z" => nz)
 
     return digamma(k) - mean(digamma.(nxz) .+ digamma.(nyz) .- digamma.(nz))
+end
+
+# Frenzel-Pompe CMI in nats, given `x`, `y`, `z` already invariant-normalized, each a
+# 1×n matrix (canonical format: one row, n columns).
+function _cmi_fp_from_normalized(x::Matrix{Float64}, y::Matrix{Float64}, z::Matrix{Float64}, k::Int)::Float64
+    xz_tree = KDTree(vcat(x, z), Chebyshev())
+    yz_tree = KDTree(vcat(y, z), Chebyshev())
+    z_tree = KDTree(z, Chebyshev())
+    return _cmi_fp_pair(x, y, z, xz_tree, yz_tree, z_tree, k)
 end
 
 """

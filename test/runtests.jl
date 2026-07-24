@@ -317,3 +317,22 @@ end
     @test isfinite(mi_mat[1, 1])
     @test abs(mi_mat[1, 1] - self_mi) < 1e-9
 end
+
+@testset "parallel=true matches sequential" begin
+    # Threads.@threads over pairs instead of requiring users to hand-roll
+    # parallelism (as we did ad hoc for the JASM analysis this generalizes).
+    # Result should be identical to parallel=false regardless of how many
+    # threads Julia was started with (falls back to sequential-on-one-thread
+    # if only one is available, per Threads.@threads semantics).
+    n = 300
+    data = rand(n, 6)
+    z = rand(n)
+
+    mi_seq = EntropyInvariant.MI(data, method="inv_ksg", k=4, parallel=false)
+    mi_par = EntropyInvariant.MI(data, method="inv_ksg", k=4, parallel=true)
+    @test mi_seq ≈ mi_par
+
+    cmi_seq = EntropyInvariant.CMI(data, z, method="inv_ksg", k=4, parallel=false)
+    cmi_par = EntropyInvariant.CMI(data, z, method="inv_ksg", k=4, parallel=true)
+    @test cmi_seq ≈ cmi_par
+end
