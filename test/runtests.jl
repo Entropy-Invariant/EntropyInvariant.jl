@@ -371,3 +371,220 @@ end
     cmi_par = EntropyInvariant.CMI(data, z, method="inv_ksg", k=4, parallel=true)
     @test cmi_seq ≈ cmi_par
 end
+
+# ---------------------------------------------------------------------------
+# N-source PID lattice (pid_lattice.jl)
+#
+# The reconstruction identity sum(atoms) == I_cap(top) is NOT used as a test: Moebius
+# inversion makes it hold for any redundancy function, correct or not, so it cannot
+# detect a wrong lattice. These tests instead check published atom values on discrete
+# toy distributions, the Williams & Beer non-negativity theorem, and exact agreement
+# with the existing two-source redundancy()/unique().
+# ---------------------------------------------------------------------------
+@testset "PID lattice: structure" begin
+    for (n, expected) in ((1, 1), (2, 4), (3, 18), (4, 166))
+        @test length(redundancy_lattice(n).nodes) == expected
+    end
+    @test_throws ArgumentError redundancy_lattice(5)
+    @test_throws ArgumentError redundancy_lattice(0)
+
+    lat = redundancy_lattice(2)
+    labels = lattice_labels(lat, ["X", "Y"])
+    @test sort(labels) == sort(["{X}{Y}", "{X}", "{Y}", "{XY}"])
+    bottom = findfirst(==("{X}{Y}"), labels)
+    top    = findfirst(==("{XY}"), labels)
+    @test isempty(lat.predecessors[bottom])          # nothing precedes the bottom
+    @test length(lat.predecessors[top]) == 3         # everything precedes the top
+    @test lattice_labels(redundancy_lattice(2), ["Ab", "Cd"]; sep="·")[top] == "{Ab·Cd}"
+    @test_throws ArgumentError lattice_labels(lat, ["X"])
+end
+
+@testset "PID lattice: I_min vs published two-source values (bits)" begin
+    # AND: X,Y iid Bernoulli(1/2), Z = X AND Y.
+    # Williams & Beer (2010): R = 0.3113, U_X = U_Y = 0, Syn = 0.5, total = H(Z) = 0.8113.
+    pmf_and = zeros(2, 2, 2)
+    pmf_and[1,1,1] = pmf_and[1,2,1] = pmf_and[2,1,1] = 0.25
+    pmf_and[2,2,2] = 0.25
+    a = pid_lattice(pmf_and; names = ["X", "Y"])
+    @test isapprox(a["{X}{Y}"], 0.311278, atol = 1e-5)
+    @test isapprox(a["{X}"], 0.0, atol = 1e-9)
+    @test isapprox(a["{Y}"], 0.0, atol = 1e-9)
+    @test isapprox(a["{XY}"], 0.5, atol = 1e-5)
+    @test isapprox(sum(values(a)), 0.811278, atol = 1e-5)
+
+    # XOR: pure synergy.
+    pmf_xor = zeros(2, 2, 2)
+    pmf_xor[1,1,1] = pmf_xor[1,2,2] = pmf_xor[2,1,2] = pmf_xor[2,2,1] = 0.25
+    x = pid_lattice(pmf_xor; names = ["X", "Y"])
+    @test isapprox(x["{X}{Y}"], 0.0, atol = 1e-9)
+    @test isapprox(x["{X}"], 0.0, atol = 1e-9)
+    @test isapprox(x["{Y}"], 0.0, atol = 1e-9)
+    @test isapprox(x["{XY}"], 1.0, atol = 1e-9)
+
+    # Two-bit COPY: Z = (X,Y) with X,Y independent bits. I_min's documented failure mode
+    # (Harder, Salge & Polani 2013) is to call two INDEPENDENT bits fully redundant:
+    # R = 1, U = 0, Syn = 1, where other measures give R = 0, U_X = U_Y = 1, Syn = 0.
+    # Asserting the flaw confirms this really is I_min and not some other measure.
+    pmf_copy = zeros(2, 2, 4)
+    pmf_copy[1,1,1] = pmf_copy[1,2,2] = pmf_copy[2,1,3] = pmf_copy[2,2,4] = 0.25
+    c = pid_lattice(pmf_copy; names = ["X", "Y"])
+    @test isapprox(c["{X}{Y}"], 1.0, atol = 1e-9)
+    @test isapprox(c["{X}"], 0.0, atol = 1e-9)
+    @test isapprox(c["{Y}"], 0.0, atol = 1e-9)
+    @test isapprox(sum(values(c)), 2.0, atol = 1e-9)
+end
+
+@testset "PID lattice: three-source XOR puts everything in the top atom" begin
+    pmf = zeros(2, 2, 2, 2)
+    for x in 0:1, y in 0:1, w in 0:1
+        pmf[x+1, y+1, w+1, xor(xor(x, y), w)+1] = 0.125
+    end
+    a = pid_lattice(pmf; names = ["1", "2", "3"])
+    @test length(a) == 18
+    @test isapprox(a["{123}"], 1.0, atol = 1e-9)
+    @test maximum(abs(v) for (kk, v) in a if kk != "{123}") < 1e-9
+end
+
+@testset "PID lattice: Williams & Beer non-negativity on random distributions" begin
+    # W&B proved I_min yields non-negative atoms. A wrong lattice order or Moebius
+    # traversal fails this almost surely, which makes it the strongest structural test.
+    rng = MersenneTwister(20260725)
+    lat = redundancy_lattice(3)
+    worst = 0.0
+    for _ in 1:100
+        p = rand(rng, 2, 2, 2, 3); p ./= sum(p)
+        atoms = moebius_atoms(lat, imin_redundancy(p))
+        worst = min(worst, minimum(atoms))
+        # the top node's cumulative redundancy is I({all sources}; Z)
+        @test isapprox(sum(atoms), imin_redundancy(p)([UInt16(7)]), atol = 1e-9)
+    end
+    @test worst > -1e-9
+end
+
+@testset "PID lattice: MMI reproduces redundancy()/unique() exactly at two sources" begin
+    rng = MersenneTwister(4242)
+    n = 400
+    z = rand(rng, n)
+    x = z .+ 0.5 .* rand(rng, n)      # correlated with the target
+    y = z .+ 0.9 .* rand(rng, n)      # correlated, but less so
+    a = pid_lattice([x, y], z; names = ["X", "Y"], repair = :none, k = 3)
+    r_pkg = redundancy(x, y, z; method = "inv_ksg", k = 3)
+    ux_pkg, uy_pkg = EntropyInvariant.unique(x, y, z; method = "inv_ksg", k = 3)
+    @test isapprox(a["{X}{Y}"], r_pkg, atol = 1e-9)
+    @test isapprox(a["{X}"], ux_pkg, atol = 1e-9)
+    @test isapprox(a["{Y}"], uy_pkg, atol = 1e-9)
+    # the four atoms must reconstruct the joint MI of the pair against the target
+    cmi = coalition_mutual_information([x, y], z; k = 3)
+    @test isapprox(sum(values(a)), cmi[UInt16(3)], atol = 1e-9)
+end
+
+@testset "PID lattice: isotonic_repair enforces monotonicity without clamping" begin
+    # A deliberately non-monotone set: the pair is estimated BELOW one of its members,
+    # which true mutual information can never be but kNN estimators regularly produce.
+    bad = Dict(UInt16(1) => 0.50, UInt16(2) => 0.20, UInt16(3) => 0.30)
+    for mode in (:isotonic, :majorant)
+        fixed = isotonic_repair(bad; mode = mode)
+        @test fixed[UInt16(3)] >= fixed[UInt16(1)] - 1e-12
+        @test fixed[UInt16(3)] >= fixed[UInt16(2)] - 1e-12
+    end
+    @test_throws ArgumentError isotonic_repair(bad; mode = :nonsense)
+
+    # An already-monotone set must be returned untouched.
+    good = Dict(UInt16(1) => 0.10, UInt16(2) => 0.20, UInt16(3) => 0.35)
+    fixed = isotonic_repair(good)
+    for kk in keys(good)
+        @test isapprox(fixed[kk], good[kk], atol = 1e-12)
+    end
+
+    # Negative values are preserved, not clamped: an estimate near a true zero is
+    # symmetric noise, and truncating it would bias low-signal regions upward.
+    negs = Dict(UInt16(1) => -0.05, UInt16(2) => -0.03, UInt16(3) => -0.01)
+    fixed = isotonic_repair(negs)
+    @test fixed[UInt16(1)] < 0.0
+    @test all(fixed[UInt16(3)] >= fixed[m] - 1e-12 for m in (UInt16(1), UInt16(2)))
+
+    # After repair, the two-source unique and synergy atoms cannot be negative.
+    lat = redundancy_lattice(2)
+    labels = lattice_labels(lat, ["X", "Y"])
+    atoms = moebius_atoms(lat, mmi_redundancy(isotonic_repair(bad)))
+    d = Dict(labels[i] => atoms[i] for i in eachindex(labels))
+    @test d["{X}"] >= -1e-12
+    @test d["{Y}"] >= -1e-12
+    @test d["{XY}"] >= -1e-12
+end
+
+@testset "PID lattice: input handling" begin
+    rng = MersenneTwister(7)
+    n = 200
+    x, y, z = rand(rng, n), rand(rng, n), rand(rng, n)
+    # vector-of-vectors and matrix forms must agree
+    from_vecs = coalition_mutual_information([x, y], z; k = 3)
+    from_mat  = coalition_mutual_information(vcat(reshape(x, 1, :), reshape(y, 1, :)),
+                                             reshape(z, 1, :); dim = 2, k = 3)
+    for kk in keys(from_vecs)
+        @test isapprox(from_vecs[kk], from_mat[kk], atol = 1e-12)
+    end
+    @test_throws ArgumentError coalition_mutual_information([x, y[1:end-1]], z)
+    # "inv" cannot reach 4 total dimensions and must say so clearly
+    @test_throws ArgumentError coalition_mutual_information([x, y, z], rand(rng, n);
+                                                            method = "inv")
+    # measure/pmf mismatches
+    @test_throws ArgumentError pid_lattice([x, y], z; measure = :imin)
+    @test_throws ArgumentError pid_lattice(rand(4); measure = :imin)
+    @test_throws ArgumentError pid_lattice(rand(2, 2, 2); measure = :mmi)
+end
+
+@testset "PID lattice: I_ccs (Ince 2017)" begin
+    # AND. The redundancy is carried entirely by the (x=0,y=0,z=0) realisation, where all
+    # three local terms equal log2(4/3); the two mixed realisations are discarded because
+    # the two local source-target MIs disagree in sign. So R = 0.25*log2(4/3) exactly.
+    pmf_and = zeros(2, 2, 2)
+    pmf_and[1,1,1] = pmf_and[1,2,1] = pmf_and[2,1,1] = 0.25
+    pmf_and[2,2,2] = 0.25
+    R_and = 0.25 * log2(4 / 3)
+    a = pid_lattice(pmf_and; measure = :iccs, names = ["X", "Y"])
+    @test isapprox(a["{X}{Y}"], R_and, atol = 1e-9)
+    @test isapprox(a["{X}"], 0.3112781 - R_and, atol = 1e-6)
+    @test isapprox(a["{Y}"], 0.3112781 - R_and, atol = 1e-6)
+    @test isapprox(sum(values(a)), 0.8112781, atol = 1e-6)
+    # I_ccs credits far less redundancy here than I_min does
+    @test a["{X}{Y}"] < pid_lattice(pmf_and; measure = :imin, names = ["X", "Y"])["{X}{Y}"]
+
+    # XOR: pure synergy under I_ccs too.
+    pmf_xor = zeros(2, 2, 2)
+    pmf_xor[1,1,1] = pmf_xor[1,2,2] = pmf_xor[2,1,2] = pmf_xor[2,2,1] = 0.25
+    x = pid_lattice(pmf_xor; measure = :iccs, names = ["X", "Y"])
+    @test isapprox(x["{X}{Y}"], 0.0, atol = 1e-9)
+    @test isapprox(x["{XY}"], 1.0, atol = 1e-9)
+
+    # Two-bit COPY: this is why I_ccs is worth having. Two INDEPENDENT bits copied to the
+    # target must decompose as R = 0, U_X = U_Y = 1, Syn = 0. I_min instead reports them
+    # as fully redundant (R = 1); I_ccs gets it right.
+    pmf_copy = zeros(2, 2, 4)
+    pmf_copy[1,1,1] = pmf_copy[1,2,2] = pmf_copy[2,1,3] = pmf_copy[2,2,4] = 0.25
+    c = pid_lattice(pmf_copy; measure = :iccs, names = ["X", "Y"])
+    @test isapprox(c["{X}{Y}"], 0.0, atol = 1e-9)
+    @test isapprox(c["{X}"], 1.0, atol = 1e-9)
+    @test isapprox(c["{Y}"], 1.0, atol = 1e-9)
+    @test isapprox(c["{XY}"], 0.0, atol = 1e-9)
+    @test isapprox(pid_lattice(pmf_copy; measure = :imin, names = ["X","Y"])["{X}{Y}"], 1.0,
+                   atol = 1e-9)   # the measure it corrects
+
+    # Three sources: XOR still concentrates in the top atom.
+    p3 = zeros(2, 2, 2, 2)
+    for xx in 0:1, yy in 0:1, ww in 0:1
+        p3[xx+1, yy+1, ww+1, xor(xor(xx, yy), ww)+1] = 0.125
+    end
+    a3 = pid_lattice(p3; measure = :iccs, names = ["1", "2", "3"])
+    @test length(a3) == 18
+    @test isapprox(a3["{123}"], 1.0, atol = 1e-9)
+    @test maximum(abs(v) for (kk, v) in a3 if kk != "{123}") < 1e-9
+
+    # Self-redundancy: a single-coalition node must return I(X_A; Z) itself.
+    lat = redundancy_lattice(2)
+    ccs = iccs_redundancy(pmf_and)
+    @test isapprox(ccs([UInt16(1)]), 0.3112781, atol = 1e-6)
+    @test isapprox(ccs([UInt16(3)]), 0.8112781, atol = 1e-6)
+
+    @test_throws ArgumentError pid_lattice(pmf_and; measure = :nonsense)
+end
