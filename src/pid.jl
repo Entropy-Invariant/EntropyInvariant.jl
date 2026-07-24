@@ -144,11 +144,8 @@ function unique(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Re
     validate_dimensions_equal_one([shape1, shape2, shape3])
     verbose && log_computation_info([shape1, shape2, shape3], base)
 
-    # NOTE: +1 correction factor added to mutual information values
-    # This ensures positive unique information when redundancy equals MI
-    # Prevents numerical instability in edge cases
-    mi_xz = mutual_information(mat_1_canonical, mat_3_canonical, method=method, nbins=nbins, k=k, base=base, degenerate=degenerate, dim=2) + 1
-    mi_yz = mutual_information(mat_2_canonical, mat_3_canonical, method=method, nbins=nbins, k=k, base=base, degenerate=degenerate, dim=2) + 1
+    mi_xz = mutual_information(mat_1_canonical, mat_3_canonical, method=method, nbins=nbins, k=k, base=base, degenerate=degenerate, dim=2)
+    mi_yz = mutual_information(mat_2_canonical, mat_3_canonical, method=method, nbins=nbins, k=k, base=base, degenerate=degenerate, dim=2)
 
     # Compute unique information: U(X;Z) = I(X;Z) - R(X,Y;Z)
     redundancy_xy_z = min(mi_xz, mi_yz)
@@ -215,6 +212,55 @@ syn = synergy(x, y, z, method="histogram", nbins=10)
 syn = synergy(x, y, z, method="inv", k=3)
 """
 
+"""
+    _invariant_normalize_rows(mat::Matrix{<:Real}) -> Matrix{Float64}
+
+Normalize each row (dimension) of `mat` independently by its own invariant
+measure. Generalizes `_invariant_normalize_row` (ksg.jl) -- which only
+handles a single 1xn row -- to an arbitrary number of rows, so a genuinely
+multi-dimensional block (e.g. two source variables treated jointly) can be
+fed into the KSG/Frenzel-Pompe shared-radius machinery.
+"""
+function _invariant_normalize_rows(mat::Matrix{<:Real})::Matrix{Float64}
+    out = Matrix{Float64}(undef, size(mat))
+    for i in 1:size(mat, 1)
+        out[i, :] = mat[i, :] ./ compute_invariant_measure(mat[i, :])
+    end
+    return out
+end
+
+"""
+    _joint_mutual_information(mat_1, mat_2, mat_3; method, nbins, k, base, degenerate) -> Real
+
+I({X,Y}; Z), the joint mutual information of the pair {X,Y} treated as one
+combined (multi-dimensional) variable against Z. This is distinct from
+`mutual_information(X, Y)`, which computes I(X;Y) between X and Y
+themselves -- `synergy()` needs the former, not the latter (see its
+docstring's PID identity).
+
+The public `mutual_information()` cannot be called for this directly: its
+`mat_1` argument is restricted to exactly one dimension in both the "inv"
+and "inv_ksg" code paths. For "inv"/"knn"/"histogram", the joint entropy
+chain rule via `entropy()` (which has no such restriction) is used instead.
+For "inv_ksg", the shared-radius KSG estimator (`_mi_ksg_from_normalized`)
+is called directly on a multi-row normalized block -- it is dimension-
+agnostic internally, it's only the public `mutual_information_ksg` wrapper
+that artificially restricts it to 1D.
+"""
+function _joint_mutual_information(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real};
+                                    method::String, nbins::Int, k::Int, base::Real, degenerate::Bool)::Real
+    joint_xy = vcat(mat_1, mat_2)
+    if method == "inv_ksg"
+        x = _invariant_normalize_rows(joint_xy)
+        z = _invariant_normalize_rows(mat_3)
+        return convert_to_base(_mi_ksg_from_normalized(x, z, k), base)
+    end
+    ent_xy  = entropy(joint_xy, method=method, nbins=nbins, k=k, base=base, degenerate=degenerate, dim=2)
+    ent_z   = entropy(mat_3,    method=method, nbins=nbins, k=k, base=base, degenerate=degenerate, dim=2)
+    ent_xyz = entropy(vcat(joint_xy, mat_3), method=method, nbins=nbins, k=k, base=base, degenerate=degenerate, dim=2)
+    return ent_xy + ent_z - ent_xyz
+end
+
 function synergy(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:Real};method::String = "inv_ksg", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false, dim::Int = 1)::Real
     # Preprocessing: normalize data layout and extract shapes
     mat_1_canonical = ensure_columns_are_points(mat_1, dim)
@@ -229,15 +275,19 @@ function synergy(mat_1::Matrix{<:Real}, mat_2::Matrix{<:Real}, mat_3::Matrix{<:R
     validate_dimensions_equal_one([shape1, shape2, shape3])
     verbose && log_computation_info([shape1, shape2, shape3], base)
 
-    # NOTE: +1 correction factors added to CMI and redundancy
-    # This compensates for the +1 offset in unique() function
-    # Maintains consistency across PID (Partial Information Decomposition) calculations
-    cmi_xyz = conditional_mutual_information(mat_1_canonical, mat_2_canonical, mat_3_canonical, method=method, nbins=nbins, k=k, base=base, degenerate=degenerate, dim=2) + 1
+    # Compute synergy: S(X,Y;Z) = I({X,Y};Z) - U(X;Z) - U(Y;Z) - R(X,Y;Z)
+    # I({X,Y};Z) is the JOINT mutual information of the pair {X,Y} against Z
+    # -- NOT conditional_mutual_information(X,Y,Z) = I(X;Y|Z), which is a
+    # different quantity entirely and was used here previously. That mixup
+    # made this function's output not satisfy the PID reconstruction
+    # identity R+U_X+U_Y+Synergy=I_joint -- verified by testing that
+    # identity directly, which is how this was caught.
+    i_joint = _joint_mutual_information(mat_1_canonical, mat_2_canonical, mat_3_canonical;
+                                         method=method, nbins=nbins, k=k, base=base, degenerate=degenerate)
     unique_x, unique_y = unique(mat_1_canonical, mat_2_canonical, mat_3_canonical, method=method, nbins=nbins, k=k, base=base, degenerate=degenerate, dim=2)
-    redundancy_xy_z = redundancy(mat_1_canonical, mat_2_canonical, mat_3_canonical, method=method, nbins=nbins, k=k, base=base, degenerate=degenerate, dim=2) + 1
+    redundancy_xy_z = redundancy(mat_1_canonical, mat_2_canonical, mat_3_canonical, method=method, nbins=nbins, k=k, base=base, degenerate=degenerate, dim=2)
 
-    # Compute synergy: S(X,Y;Z) = I(X,Y;Z) - U(X;Z) - U(Y;Z) - R(X,Y;Z)
-    return cmi_xyz - unique_x - unique_y - redundancy_xy_z
+    return i_joint - unique_x - unique_y - redundancy_xy_z
 end
 
 function synergy(array_1::Vector{<:Real}, array_2::Vector{<:Real}, array_3::Vector{<:Real};method::String = "inv_ksg", nbins::Int = 10, k::Int = 3, base::Real = e, verbose::Bool = false, degenerate::Bool = false)::Real

@@ -88,6 +88,41 @@ using Random
     @test abs(actual_output-expected_output1) < 1e-7
     @test abs(actual_output-expected_output2) < 1e-7
 
+    # PID reconstruction identity: R + U_X + U_Y + Synergy must equal the
+    # joint mutual information I({X,Y};Z) -- that's the defining property of
+    # a partial information decomposition. This is the check that catches
+    # the historical bug where synergy() used
+    # conditional_mutual_information(X,Y,Z) (= I(X;Y|Z)) in place of the
+    # joint MI I({X,Y};Z) -- a shape-consistency check alone (above) cannot
+    # detect that kind of error, only a correctness check can.
+    #
+    # method="inv": I_joint computed independently via the joint-entropy
+    # chain rule directly (not via synergy()'s own internal helper), so this
+    # check is not circular with the implementation.
+    r  = redundancy(x, y, z, method="inv")
+    ux, uy = EntropyInvariant.unique(x, y, z, method="inv")
+    s  = synergy(x, y, z, method="inv")
+    xy_joint = vcat(reshape(x, 1, n), reshape(y, 1, n))
+    z_row = reshape(z, 1, n)
+    i_joint_independent = entropy(xy_joint, method="inv", dim=2) +
+                           entropy(z_row, method="inv", dim=2) -
+                           entropy(vcat(xy_joint, z_row), method="inv", dim=2)
+    @test abs((r + ux + uy + s) - i_joint_independent) < 1e-6
+
+    # method="inv_ksg" (default): no independent public code path exists to
+    # compute I({X,Y};Z) for this method (that's exactly why synergy()
+    # needed a new internal helper), so this re-checks internal
+    # self-consistency rather than independence -- still catches any
+    # regression that breaks the identity, just not a bug shared between
+    # synergy() and its own helper.
+    r_ksg  = redundancy(x, y, z)
+    ux_ksg, uy_ksg = EntropyInvariant.unique(x, y, z)
+    s_ksg  = synergy(x, y, z)
+    i_joint_ksg = EntropyInvariant._joint_mutual_information(
+        reshape(x, 1, n), reshape(y, 1, n), reshape(z, 1, n);
+        method="inv_ksg", nbins=10, k=3, base=EntropyInvariant.e, degenerate=false)
+    @test abs((r_ksg + ux_ksg + uy_ksg + s_ksg) - i_joint_ksg) < 1e-6
+
     # Test for Optimized Mutual Information Matrix (MI function)
     m = 3
     a = rand(n, m)
