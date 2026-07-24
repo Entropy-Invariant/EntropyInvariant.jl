@@ -6,6 +6,18 @@ from this release.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.0] - 2026-07-24
+
+### Added
+- `MI()` / `CMI()` (`method="inv_ksg"`) now build each dimension's own k-NN
+  tree once and reuse it across all pairs, instead of rebuilding it (and, for
+  `CMI()`, the Z-only tree) redundantly for every pair -- a pure speed
+  improvement, no change in output values.
+- `parallel::Bool = false` keyword on `MI()` / `CMI()`: distributes the
+  remaining O(m²) per-pair shared-radius work across `Threads.@threads`
+  (requires Julia started with more than one thread to actually parallelize).
+  Verified to produce identical results to `parallel=false`.
+
 ## [2.0.0] - 2026-07-24
 
 Bumped as a major version because the default method now returns different
@@ -63,6 +75,7 @@ Versions [v1.1.1], [v1.1.0], and [v1.0.0] predate this changelog; see their
 GitHub release pages for the (auto-generated, Julia-registry-compat-only)
 notes.
 
+[2.1.0]: https://github.com/Entropy-Invariant/EntropyInvariant.jl/releases/tag/v2.1.0
 [2.0.0]: https://github.com/Entropy-Invariant/EntropyInvariant.jl/releases/tag/v2.0.0
 [v1.1.1]: https://github.com/Entropy-Invariant/EntropyInvariant.jl/releases/tag/v1.1.1
 [v1.1.0]: https://github.com/Entropy-Invariant/EntropyInvariant.jl/releases/tag/v1.1.0
