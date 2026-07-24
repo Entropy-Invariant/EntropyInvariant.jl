@@ -59,10 +59,7 @@ function MI(a::Matrix{<:Real}; method::String = "inv_ksg", k::Int = 3, base::Rea
 
     # Reshape and divide by invariant measure all dimensions (shared by both methods
     # below). m-element Vector{Matrix{<:Real}} with 1×n Matrix{<:Real}
-    all_ri = zeros(m)
-    for i in 1:m
-        all_ri[i] = median(sort(nn1(sort(a[:,i]))))*n
-    end
+    all_ri = [compute_invariant_measure(a[:,i]) for i in 1:m]
     all_a_ri = [reshape(a[:,i]/all_ri[i], 1, n) for i in 1:m]
 
     if method == "inv_ksg"
@@ -207,11 +204,8 @@ function CMI(a::Matrix{<:Real}, b::Vector{<:Real}; method::String = "inv_ksg", b
 
     # Compute the invariant measure for all dimensions of a, and for the conditioning
     # variable b, and normalize -- shared by both methods below.
-    all_ri = zeros(m)
-    for i in 1:m
-        all_ri[i] = median(sort(nn1(sort(a[:,i]))))*n
-    end
-    rz = median(sort(nn1(sort(b))))*n
+    all_ri = [compute_invariant_measure(a[:,i]) for i in 1:m]
+    rz = compute_invariant_measure(b)
     all_a_ri = [reshape(a[:,i]/all_ri[i], 1, n) for i in 1:m]
     b_rz = reshape(b/rz, 1, n)
 
