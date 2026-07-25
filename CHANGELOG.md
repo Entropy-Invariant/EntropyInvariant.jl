@@ -113,6 +113,7 @@ Versions [v1.1.1], [v1.1.0], and [v1.0.0] predate this changelog; see their
 GitHub release pages for the (auto-generated, Julia-registry-compat-only)
 notes.
 
+[2.2.0]: https://github.com/Entropy-Invariant/EntropyInvariant.jl/releases/tag/v2.2.0
 [2.1.0]: https://github.com/Entropy-Invariant/EntropyInvariant.jl/releases/tag/v2.1.0
 [2.0.0]: https://github.com/Entropy-Invariant/EntropyInvariant.jl/releases/tag/v2.0.0
 [v1.1.1]: https://github.com/Entropy-Invariant/EntropyInvariant.jl/releases/tag/v1.1.1
