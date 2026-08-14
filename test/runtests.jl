@@ -588,3 +588,45 @@ end
 
     @test_throws ArgumentError pid_lattice(pmf_and; measure = :nonsense)
 end
+
+@testset "KSG strict radius" begin
+    # The shared-radius correction must be relative, not a fixed absolute epsilon.
+
+    # one ULP below, at every scale
+    for e in [1e-3, 1.0, 1e3]
+        r = EntropyInvariant._strict_radius(e)
+        @test r < e
+        @test nextfloat(r) == e
+    end
+
+    # 70% of the mass in a core far tighter than the median nearest-neighbour
+    # spacing, the rest spread over U(0, 10). x is built independently of y, so the
+    # true MI is 0. A fixed 1e-12 epsilon drops genuine neighbours here and the
+    # estimate lands near -0.10 on every seed.
+    vals = Float64[]
+    for seed in 0:5
+        rng = MersenneTwister(seed)
+        n = 30_000
+        ncore = Int(round(n * 0.7))
+        x = shuffle(rng, vcat(1e-12 .* randn(rng, ncore), 10 .* rand(rng, n - ncore)))
+        push!(vals, mutual_information_ksg(x, randn(rng, n)))
+    end
+    @test maximum(abs.(vals)) < 0.02
+
+    # A degenerate shared radius must report the data problem, not
+    # NearestNeighbors' "the query radius r must be >= 0".
+    rng = MersenneTwister(0)
+    n = 3000
+    xd = vcat(randn(rng, n), fill(2.5, 10))
+    yd = vcat(randn(rng, n), fill(-1.5, 10))
+    err = try
+        mutual_information_ksg(xd, yd)
+        nothing
+    catch e
+        sprint(showerror, e)
+    end
+    @test err !== nothing
+    @test occursin("degenerate", err)
+    @test occursin("deduplicating", err)
+end
+

@@ -22,12 +22,48 @@
 # matrix functions in optimized.jl, which normalize each column once up front rather than
 # repeating it per pair).
 
+# Largest radius strictly below `eps`, correct at any scale.
+#
 # NearestNeighbors' `inrange`/`inrangecount` use a non-strict (<=) radius comparison, but
-# the KSG/Frenzel-Pompe algorithm requires strict (<) neighbor counts. Subtracting a small
-# epsilon from the radius corrects this without materially affecting real (roughly
-# unit-magnitude, post-normalization) distances. Same fix used by the `ennemi` Python
-# package (see https://github.com/polsys/ennemi/issues/76).
-const _STRICT_RADIUS_EPS = 1e-12
+# the KSG/Frenzel-Pompe algorithm requires strict (<) neighbor counts. Stepping down
+# exactly one ULP gives that, and the step scales with the radius.
+#
+# Subtracting a fixed absolute epsilon instead (this used to be 1e-12, the same fix the
+# `ennemi` Python package applies, see https://github.com/polsys/ennemi/issues/76) also
+# drops any genuine neighbor lying within that epsilon of the shared radius. Those
+# neighbors belong inside the ball, so the marginal counts come out wrong.
+#
+# Invariant normalization keeps *typical* distances near 1, which is what made the
+# absolute epsilon look safe, but it cannot keep individual neighbors away from the
+# radius. Data mixing two very different scales (a cluster orders of magnitude tighter
+# than the median spacing, alongside a normal spread) puts many neighbors inside that
+# window at once. The sign of the resulting error depends on which subspace loses more
+# counts: a small tight spike biases MI upward, a dominant tight core biases it downward
+# by as much as 0.1 nat where the truth is 0.
+#
+# `eps == 0` (k+1 coincident points) is handled by `_check_no_degenerate_radius` below,
+# which must run BEFORE any query. This is the one place the Julia and Python versions
+# genuinely differ: SciPy's `query_ball_point` accepts a negative radius and returns a
+# count of 0, so the Python side can pass one through and let `_check_no_degenerate_counts`
+# report it. NearestNeighbors rejects it outright ("the query radius r must be ≧ 0"), so
+# here the degenerate radius has to be caught up front or the user gets that message
+# instead of one describing their data.
+_strict_radius(eps::Real)::Float64 = prevfloat(Float64(eps))
+
+# Raise the same error `_check_no_degenerate_counts` would, but from the shared radius
+# itself, before it reaches a query that would throw a less informative message.
+function _check_no_degenerate_radius(eps::Vector{Float64})
+    n_degenerate = count(==(0), eps)
+    if n_degenerate > 0
+        throw(ArgumentError(
+            "Shared KSG radius is degenerate for $n_degenerate point(s): " *
+            "at least k+1 points coincide exactly in the joint space (e.g. " *
+            "multiple all-zero/duplicate rows). Cannot compute a finite " *
+            "entropy estimate for these points -- consider deduplicating, " *
+            "adding jitter, or excluding the offending dimension(s)."
+        ))
+    end
+end
 
 function _invariant_normalize_row(mat::Matrix{<:Real})::Matrix{Float64}
     measure = compute_invariant_measure(mat[1, :])
@@ -94,9 +130,10 @@ function _mi_ksg_pair(x::Matrix{Float64}, y::Matrix{Float64}, x_tree, y_tree, k:
     # Shared radius: k-th neighbor distance in the joint (normalized) space.
     _, dists = knn(joint_tree, xy, k + 1, true)
     eps = [d[k + 1] for d in dists]
+    _check_no_degenerate_radius(eps)
 
-    nx = [inrangecount(x_tree, x[:, i], eps[i] - _STRICT_RADIUS_EPS) for i in 1:n]
-    ny = [inrangecount(y_tree, y[:, i], eps[i] - _STRICT_RADIUS_EPS) for i in 1:n]
+    nx = [inrangecount(x_tree, x[:, i], _strict_radius(eps[i])) for i in 1:n]
+    ny = [inrangecount(y_tree, y[:, i], _strict_radius(eps[i])) for i in 1:n]
     _check_no_degenerate_counts("x" => nx, "y" => ny)
 
     return digamma(n) + digamma(k) - mean(digamma.(nx) .+ digamma.(ny))
@@ -129,10 +166,11 @@ function _cmi_fp_pair(x::Matrix{Float64}, y::Matrix{Float64}, z::Matrix{Float64}
     # Shared radius: k-th neighbor distance in the full joint (normalized) space.
     _, dists = knn(full_tree, xyz, k + 1, true)
     eps = [d[k + 1] for d in dists]
+    _check_no_degenerate_radius(eps)
 
-    nxz = [inrangecount(xz_tree, xz[:, i], eps[i] - _STRICT_RADIUS_EPS) for i in 1:n]
-    nyz = [inrangecount(yz_tree, yz[:, i], eps[i] - _STRICT_RADIUS_EPS) for i in 1:n]
-    nz  = [inrangecount(z_tree,  z[:, i],  eps[i] - _STRICT_RADIUS_EPS) for i in 1:n]
+    nxz = [inrangecount(xz_tree, xz[:, i], _strict_radius(eps[i])) for i in 1:n]
+    nyz = [inrangecount(yz_tree, yz[:, i], _strict_radius(eps[i])) for i in 1:n]
+    nz  = [inrangecount(z_tree,  z[:, i],  _strict_radius(eps[i])) for i in 1:n]
     _check_no_degenerate_counts("x,z" => nxz, "y,z" => nyz, "z" => nz)
 
     return digamma(k) - mean(digamma.(nxz) .+ digamma.(nyz) .- digamma.(nz))

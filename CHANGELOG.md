@@ -6,6 +6,30 @@ from this release.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.2.1] - 2026-08-14
+
+### Fixed
+- KSG/Frenzel-Pompe neighbour counting used a fixed absolute epsilon (`1e-12`) to turn
+  `inrangecount`'s non-strict (`<=`) radius comparison into the strict (`<`) one the
+  estimators require. Any genuine neighbour lying within that epsilon of the shared
+  radius was dropped along with the k-th one, so the marginal counts came out too low.
+  The correction is now relative -- `prevfloat`, exactly one ULP -- so it scales with the
+  radius instead of assuming one. Invariant normalization keeps *typical* distances near
+  1, which is what made the absolute epsilon look safe, but it cannot keep individual
+  neighbours away from the radius: data mixing two very different scales (a cluster
+  orders of magnitude tighter than the median spacing, alongside a normal spread) puts
+  many neighbours inside that window at once. `mutual_information` and
+  `conditional_mutual_information` under `method="inv_ksg"` were affected, and with them
+  every PID atom built on them. Measured on a 70%-tight-core mixture with a true MI of 0,
+  the estimate moved from -0.099 to +0.001 nats. Tie-free data is unchanged.
+- A degenerate shared radius (`k+1` coincident points) reported
+  `ArgumentError: the query radius r must be >= 0` from NearestNeighbors instead of the
+  package's own message describing the data. `inrangecount` rejects a negative radius
+  outright, so the degenerate case is now caught from the radius itself, before the
+  query. This is the one place the Julia and Python implementations differ: SciPy's
+  `query_ball_point` accepts a negative radius and returns a count of 0, so the Python
+  side can detect it after the fact.
+
 ## [2.2.0] - 2026-07-25
 
 ### Added
