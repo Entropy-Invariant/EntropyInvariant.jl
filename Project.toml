@@ -1,6 +1,6 @@
 name = "EntropyInvariant"
 uuid = "73e3304b-a6b6-4b69-aa20-e611882c686e"
-version = "2.2.1"
+version = "2.2.2"
 authors = ["Felix Truong <felix.servant7@gmail.com> and Alexandre Giuliani <alexandre.giuliani@synchrotron-soleil.fr>"]
 
 [deps]
@@ -14,7 +14,7 @@ Distances = "0.10"
 NearestNeighbors = "0.4"
 SpecialFunctions = "2"
 Statistics = "1"
-julia = "1.1"
+julia = "1.10"
 
 [extras]
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"

@@ -6,6 +6,15 @@ from this release.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.2.2] - 2026-08-28
+
+### Changed
+- `[compat]` now declares `julia = "1.10"` instead of `"1.1"`. The old bound was never
+  achievable: `SpecialFunctions` 2.6 and later require Julia 1.10, and even 2.5 requires
+  1.5, so no valid dependency set resolves on Julia 1.1. 1.10 is the current LTS and is
+  the oldest version CI tests. No source change -- this only makes the manifest describe
+  what the package actually supports.
+
 ## [2.2.1] - 2026-08-14
 
 ### Fixed
