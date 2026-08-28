@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+  workflow_dispatch:
+
+# One in-flight run per branch; a new push cancels the previous run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  test:
+    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.threads }} thread(s)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1.10'  # LTS
+          - '1'     # latest stable
+        os:
+          - ubuntu-latest
+        threads:
+          - '1'
+        include:
+          # `parallel=true` on MI()/CMI() only actually parallelizes when Julia
+          # starts with more than one thread, so exercise it with several.
+          - version: '1'
+            os: ubuntu-latest
+            threads: '4'
+          - version: '1'
+            os: windows-latest
+            threads: '1'
+          - version: '1'
+            os: macos-latest
+            threads: '1'
+    env:
+      JULIA_NUM_THREADS: ${{ matrix.threads }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+      - uses: julia-actions/cache@v2
+      - uses: julia-actions/julia-buildpkg@v1
+      - uses: julia-actions/julia-runtest@v1
