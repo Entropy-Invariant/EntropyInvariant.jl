@@ -156,30 +156,36 @@ using Random
 end
 
 @testset "KSG / Frenzel-Pompe (inv_ksg)" begin
+    rng = MersenneTwister(0)
     n = 2000
-    x = rand(n)
-    y = 2 * x .+ 0.1 * rand(n)
-    z = rand(n)
+    x = rand(rng, n)
+    y = 2 * x .+ 0.1 * rand(rng, n)
+    z = rand(rng, n)
 
     # --- mutual_information_ksg ---
     mi = mutual_information_ksg(x, y)
     @test isfinite(mi)
     @test abs(mutual_information_ksg(x, y) - mutual_information_ksg(y, x)) < 1e-10
 
-    # Scale invariance: independent affine rescaling of each variable
+    # Scale invariance: independent affine rescaling of each variable. Exact in
+    # real arithmetic, not in Float64: 1e-6 * y .+ 3 keeps only ~10 significant
+    # digits of y, so a near-tie at the shared radius can flip one neighbour
+    # count, which moves MI by ~1/(n * count). Over 2000 random draws the
+    # largest such difference was 3.9e-4 (NMI below); a real invariance bug is
+    # O(0.01) or more. Same tolerance for NMI and IQR.
     mi_scaled = mutual_information_ksg(1e6 * x .- 5, 1e-6 * y .+ 3)
-    @test abs(mi - mi_scaled) < 1e-6
+    @test abs(mi - mi_scaled) < 1e-3
 
     # Closed-form check: bivariate Gaussian, I(X;Y) = -0.5*log(1-rho^2)
     rho = 0.6
-    z1 = randn(5000); z2 = randn(5000)
+    z1 = randn(rng, 5000); z2 = randn(rng, 5000)
     gx = z1
     gy = rho .* z1 .+ sqrt(1 - rho^2) .* z2
     true_mi = -0.5 * log(1 - rho^2)
     @test abs(mutual_information_ksg(gx, gy) - true_mi) < 0.05
 
     # Independent variables: MI close to 0
-    ind_x = randn(3000); ind_y = randn(3000)
+    ind_x = randn(rng, 3000); ind_y = randn(rng, 3000)
     @test abs(mutual_information_ksg(ind_x, ind_y)) < 0.1
 
     # --- conditional_mutual_information_ksg ---
@@ -190,14 +196,14 @@ end
     @test abs(cmi - cmi_scaled) < 1e-6
 
     # Chain X -> Z -> Y: I(X;Y|Z) should be close to 0
-    cx = randn(3000)
-    cz = cx .+ 0.3 * randn(3000)
-    cy = cz .+ 0.3 * randn(3000)
+    cx = randn(rng, 3000)
+    cz = cx .+ 0.3 * randn(rng, 3000)
+    cy = cz .+ 0.3 * randn(rng, 3000)
     @test abs(conditional_mutual_information_ksg(cx, cy, cz)) < 0.1
 
     # Collider X -> Z <- Y: I(X;Y|Z) should be clearly positive
-    colx = randn(3000); coly = randn(3000)
-    colz = colx .+ coly .+ 0.3 * randn(3000)
+    colx = randn(rng, 3000); coly = randn(rng, 3000)
+    colz = colx .+ coly .+ 0.3 * randn(rng, 3000)
     @test conditional_mutual_information_ksg(colx, coly, colz) > 0.3
 
     # --- inv_ksg is the default for every MI/CMI-derived quantity ---
@@ -218,11 +224,11 @@ end
     # NMI / IQR: finite and scale-invariant
     nmi = normalized_mutual_information(x, y)
     nmi_scaled = normalized_mutual_information(1e6 * x .- 5, 1e-6 * y .+ 3)
-    @test abs(nmi - nmi_scaled) < 1e-5
+    @test abs(nmi - nmi_scaled) < 1e-3
 
     iqr = information_quality_ratio(x, y)
     iqr_scaled = information_quality_ratio(1e6 * x .- 5, 1e-6 * y .+ 3)
-    @test abs(iqr - iqr_scaled) < 1e-5
+    @test abs(iqr - iqr_scaled) < 1e-3
 
     # --- MI / CMI matrices default to inv_ksg, "inv" still available ---
     data = hcat(x, y, z)
