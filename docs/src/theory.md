@@ -59,7 +59,8 @@ Given $n$ samples $\{x_1, \ldots, x_n\}$:
 4. **Take the median**: $\tilde{d} = \text{median}(\{d_1, \ldots, d_n\})$
 5. **Scale by sample size**: $r_X = \tilde{d} \cdot n$
 
-The use of the median (rather than mean) provides robustness to outliers.
+The use of the median (rather than mean) provides robustness to outliers. The factor
+$n$ makes $r_X$ converge as the sample grows: $\tilde{d}$ itself shrinks like $1/n$.
 
 Repeated values are set aside only from $r_X$; the entropy estimate still uses every
 point.

@@ -33,6 +33,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   Input containing `NaN` now returns `NaN` instead of NearestNeighbors' "data
   containing NaN" error.
 
+### Documented
+- The factor `n` in `r_X = n * median(NN distance)` is what makes the invariant entropy
+  converge; the median alone shrinks like `1/n`. A test pins the Uniform value of the
+  published Table 2.
+
 ## [2.2.2] - 2026-08-28
 
 ### Changed

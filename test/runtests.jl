@@ -732,3 +732,12 @@ end
     @test isnan(EntropyInvariant.compute_invariant_measure([0.0, 0, 0, 0, 7]))
     @test isnan(EntropyInvariant.compute_invariant_measure([5.0, 5, 5, 5, 7]))
 end
+
+@testset "Invariant measure scales with n (published Table 2)" begin
+    # r_X = n * median(NN distance). The median alone shrinks like 1/n and
+    # would add log(n) to every entropy. For U(0,1), n * median(NN distance)
+    # tends to ln(2)/2, so the invariant entropy tends to -log(ln(2)/2) = 1.0597,
+    # the Uniform row of Table 2 (1.060).
+    rng = MersenneTwister(3)
+    @test abs(entropy(rand(rng, 50_000), k=3) - (-log(log(2) / 2))) < 0.03
+end
