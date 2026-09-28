@@ -36,6 +36,12 @@ to its spacing, the values that occur once no longer represent the data, so this
 throws instead: after setting aside the most frequent value, the remaining
 duplicates must not outnumber the values that occur once.
 
+Only exact repeats count. Values that are very close but not identical, such as
+readings at an instrument's noise floor (1e-12 instead of 0), are ordinary distinct
+values: when they make up most of the data, the median lands inside that tight
+cluster and the scale collapses to its spacing. Snap such readings to one exact value
+(for example, everything below the detection limit to 0) before calling.
+
 # Arguments
 - `data::Vector{<:Real}`: 1D data vector
 

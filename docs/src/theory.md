@@ -63,7 +63,8 @@ The use of the median (rather than mean) provides robustness to outliers. The fa
 $n$ makes $r_X$ converge as the sample grows: $\tilde{d}$ itself shrinks like $1/n$.
 
 Repeated values are set aside only from $r_X$; the entropy estimate still uses every
-point.
+point. Only exact repeats are recognized, so readings at a noise floor should be
+snapped to one exact value first (see [Getting Started](@ref)).
 
 ## k-NN Entropy Estimation
 
