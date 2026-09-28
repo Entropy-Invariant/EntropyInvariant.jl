@@ -13,7 +13,7 @@ H(X) = -\int_X p(x)\log\left(\frac{p(x)}{m(x)}\right)\mathrm{d}x
 ## Key Features
 
 - **Invariant under change of variables**: Scaling and translation do not affect entropy estimates
-- **Always positive**: Unlike standard k-NN methods that can produce negative values
+- **Positive in practice**: Unlike raw differential entropy, which is negative whenever the data spread is small in the chosen units, the invariant entropy is positive for common distribution families; it goes negative only in extreme cases (see [Theory](@ref))
 - **Multiple estimation methods**: Invariant (default), k-NN, and histogram-based
 - **Comprehensive information theory**: Entropy, mutual information, conditional entropy, and more
 - **Partial Information Decomposition**: Redundancy, unique information, and synergy

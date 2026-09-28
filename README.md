@@ -1,6 +1,8 @@
 # EntropyInvariant
 
-This code is an improved nearest neighbor method for estimating differential entropy[^1] for continuous variables, invariant under change of variables, and positive. This approximation claim to solve the limiting density of discrete points formulated by Edwin Thompson Jaynes[^2]. All the details of the estimation can be found on the paper[^4].
+This code is an improved nearest neighbor method for estimating differential entropy[^1] for continuous variables, invariant under affine changes of variables (rescaling and shifting each variable). This approximation claim to solve the limiting density of discrete points formulated by Edwin Thompson Jaynes[^2]. All the details of the estimation can be found on the paper[^4].
+
+The invariant entropy is positive for common distribution families. It can go negative, but only in extreme cases: a minority of the data packed into a region roughly a thousand times narrower than the rest, or more. For example, 70% of values spread over [0, 1] and 30% inside [0, 10⁻⁶] give about −2.1.
 
 $$
 \begin{equation*}

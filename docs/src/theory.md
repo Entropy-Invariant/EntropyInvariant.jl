@@ -106,6 +106,25 @@ Our invariant estimator modifies the standard k-NN approach:
 
 This ensures that the entropy estimate is invariant under scaling and translation of the original variables.
 
+### Sign of the Invariant Entropy
+
+As the sample grows, $r_X$ converges to $m^*(P) = \operatorname{median}\bigl[E / (2 f(X))\bigr]$, where $f$ is
+the density of $X$ and $E \sim \operatorname{Exp}(1)$ is independent of $X$, and the invariant entropy
+converges to
+
+```math
+h_c(X) = h(X) - \log m^*(P)
+```
+
+This is positive for common distribution families (uniform, normal, exponential, Cauchy and
+others), but not for every distribution: it is negative when $m^*(P) > e^{h(X)}$. That takes an
+extreme shape: a minority of the mass packed into a region roughly a thousand times narrower
+than the rest of the distribution, or more. The narrow part pulls $h(X)$ down, while the median
+spacing is still set by the majority. With 30% of the mass in the narrow part, the value turns
+negative once that part is about 900 to 1,300 times narrower (uniform or Gaussian shapes); with
+10% of the mass, it has to be millions of times narrower. For example, 70% of values uniform on
+$[0, 1]$ and 30% uniform on $[0, 10^{-6}]$ give $h_c \approx -2.1$.
+
 ## Information-Theoretic Quantities
 
 All other quantities are derived from entropy using standard identities:
@@ -183,7 +202,7 @@ S(X,Y;Z) &= I(X,Y;Z) - I(X;Z) - I(Y;Z) + R(X,Y;Z)
 
 | Method | Pros | Cons |
 |--------|------|------|
-| **Invariant (inv)** | Scale/translation invariant, positive | Slightly higher computational cost |
+| **Invariant (inv)** | Scale/translation invariant; positive except in extreme cases | Slightly higher computational cost |
 | **k-NN (knn)** | Well-studied, efficient | Can be negative, not invariant |
 | **Histogram** | Simple, fast | Requires binning, curse of dimensionality |
 
