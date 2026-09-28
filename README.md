@@ -171,6 +171,8 @@ println("Entropy (Invariant): ", entropy(data, method="inv", k=3))
 
 In extreme cases, when the neighbourhood distance is small. The logarithm of the distance is strongly negative. This can lead to negative entropy. We therefore recommend setting the "degenerate" parameter to true. This parameter adds 1 to each distance, so that the logarithm is always positive.
 
+Exactly repeated values (the zeros of sparse data, a saturation level) are set aside when computing the invariant measure, wherever they sit; they still count in the entropy and mutual information. Only exact repeats are recognized: if readings below the detection limit are recorded as tiny noise rather than exactly 0, snap them to one exact value first, e.g. `ifelse.(abs.(x) .< detection_limit, 0.0, x)`.
+
 Please inform us if you discover any bugs or errors in the code, or if you believe another quantity should be added.
 
 [^1]: [Estimating mutual information](https://journals.aps.org/pre/abstract/10.1103/PhysRevE.69.066138) DOI: 10.1103/PhysRevE.69.066138

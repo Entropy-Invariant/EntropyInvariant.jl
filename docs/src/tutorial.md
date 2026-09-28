@@ -361,5 +361,6 @@ println("Sum of marginal entropies: $H_marginals")
 1. **Sample size**: Use at least 500-1000 points for reliable estimates
 2. **k parameter**: Default k=3 works well; increase for noisy data
 3. **Degenerate data**: Use `degenerate=true` for data with ties or small distances
+   - **Noise floor**: snap readings below the detection limit to one exact value (e.g. `0`); near-identical values are not treated as repeats
 4. **Matrix functions**: Use `MI()` and `CMI()` for pairwise computations (much faster)
 5. **Base conversion**: Use `base=2` for bits, `base=e` (default) for nats

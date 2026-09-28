@@ -117,6 +117,8 @@ function entropy_inv(mat_::Matrix{<:Real}; k::Int = 3, base::Real = e, verbose::
 
     # Invariant measure normalization
     normalized_mat = normalize_by_invariant_measure(mat)
+    # A dimension with fewer than two values that occur once has no scale (NaN measure)
+    any(isnan, normalized_mat) && return NaN
 
     # K-NN computation
     noise = degenerate ? 1 : 0

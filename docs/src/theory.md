@@ -53,12 +53,18 @@ We propose an invariant measure $r_X$ based on nearest-neighbor distances that s
 
 Given $n$ samples $\{x_1, \ldots, x_n\}$:
 
-1. **Sort the data** for each dimension
-2. **Compute nearest-neighbor distances**: For each point, find the distance to its nearest neighbor
-3. **Take the median**: $\tilde{d} = \text{median}(\{d_1, \ldots, d_n\})$
-4. **Scale by sample size**: $r_X = \tilde{d} \cdot n$
+1. **Set aside repeated values**: a value that occurs more than once has a distance of 0 to its copy, which says nothing about spacing
+2. **Sort the remaining $n$ values** for each dimension
+3. **Compute nearest-neighbor distances**: For each point, find the distance to its nearest neighbor
+4. **Take the median**: $\tilde{d} = \text{median}(\{d_1, \ldots, d_n\})$
+5. **Scale by sample size**: $r_X = \tilde{d} \cdot n$
 
-The use of the median (rather than mean) provides robustness to outliers.
+The use of the median (rather than mean) provides robustness to outliers. The factor
+$n$ makes $r_X$ converge as the sample grows: $\tilde{d}$ itself shrinks like $1/n$.
+
+Repeated values are set aside only from $r_X$; the entropy estimate still uses every
+point. Only exact repeats are recognized, so readings at a noise floor should be
+snapped to one exact value first (see [Getting Started](@ref)).
 
 ## k-NN Entropy Estimation
 
