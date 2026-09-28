@@ -22,7 +22,9 @@ Formula: r_X = median(nearest_neighbor_distances) × num_points
 - `data::Vector{<:Real}`: 1D data vector
 
 # Returns
-- `Real`: The invariant measure r_X
+- `Real`: The invariant measure r_X, or `NaN` when fewer than two non-zero values
+  remain -- there is no spacing to measure, so there is no scale. Every estimator
+  returns `NaN` for a quantity that involves such a dimension.
 
 # Example
 ```julia
@@ -34,7 +36,7 @@ r_x = compute_invariant_measure(x)
 function compute_invariant_measure(data::Vector{<:Real})::Real
     non_zero_data = filter(x -> x != 0, data)
     if length(non_zero_data) < 2
-        return 1.0
+        return NaN
     end
     sorted_data = sort(non_zero_data)
     nn_distances = nn1(sorted_data)

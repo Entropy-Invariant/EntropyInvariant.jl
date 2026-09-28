@@ -6,6 +6,18 @@ from this release.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- A dimension with fewer than two non-zero values now has invariant measure `NaN`
+  instead of `1.0`, and every estimator returns `NaN` for a quantity that involves it.
+  With no spacing to measure there is no scale, and `1.0` left the column in its own
+  units: `entropy(w)` and `entropy(1000w)` differed by exactly `log(1000)`. In the
+  `MI()`/`CMI()` matrices only that dimension's row and column become `NaN` (all of
+  `CMI()` if it is the conditioning variable); the other entries are unchanged.
+  Input containing `NaN` now returns `NaN` instead of NearestNeighbors' "data
+  containing NaN" error.
+
 ## [2.2.2] - 2026-08-28
 
 ### Changed

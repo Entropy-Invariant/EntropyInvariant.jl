@@ -68,16 +68,20 @@ function MI(a::Matrix{<:Real}; method::String = "inv_ksg", k::Int = 3, base::Rea
     # below). m-element Vector{Matrix{<:Real}} with 1×n Matrix{<:Real}
     all_ri = [compute_invariant_measure(a[:,i]) for i in 1:m]
     all_a_ri = [reshape(a[:,i]/all_ri[i], 1, n) for i in 1:m]
+    # A dimension with fewer than two non-zero values has no scale (NaN measure):
+    # its row and column of the result are NaN, and no tree is built for it.
+    has_scale = [!isnan(r) for r in all_ri]
 
     if method == "inv_ksg"
         # Each dimension's marginal (1D) tree only depends on that dimension,
         # so build it once here rather than re-building it for every pair it
         # appears in (each dimension appears in m pairs).
-        marginal_trees = [KDTree(Matrix{Float64}(all_a_ri[i]), Chebyshev()) for i in 1:m]
+        marginal_trees = [has_scale[i] ? KDTree(Matrix{Float64}(all_a_ri[i]), Chebyshev()) : nothing for i in 1:m]
         pairs = [(i, j) for i in 1:m for j in i:m]
         all_mi_ij = zeros(m, m)
 
-        compute_pair = (i, j) -> i == j ?
+        compute_pair = (i, j) -> !(has_scale[i] && has_scale[j]) ? NaN :
+            i == j ?
             _entropy_nats_from_normalized(Matrix{Float64}(all_a_ri[i]), k) :
             _mi_ksg_pair(Matrix{Float64}(all_a_ri[i]), Matrix{Float64}(all_a_ri[j]), marginal_trees[i], marginal_trees[j], k)
 
@@ -121,6 +125,10 @@ function MI(a::Matrix{<:Real}; method::String = "inv_ksg", k::Int = 3, base::Rea
     # Compute all marginal entropy KNN INV
     all_ent_i = zeros(m)
     for i in 1:m
+        if !has_scale[i]
+            all_ent_i[i] = NaN
+            continue
+        end
         kdtree_i = KDTree(all_a_ri[i])
 
         idxs_i, dists_i = knn(kdtree_i, all_a_ri[i], k_1, true)
@@ -129,13 +137,13 @@ function MI(a::Matrix{<:Real}; method::String = "inv_ksg", k::Int = 3, base::Rea
 
         log_dists_k_i = []
         for j in dists_k_i
-            if j != 0 #log(0) non defini 
+            if j != 0 #log(0) non defini
                 push!(log_dists_k_i, log(j+noise))
             end
         end
         all_ent_i[i] = d1*mean(log_dists_k_i)+log_volume_unit_ball_1+dig_n-dig_k
     end
-        
+
     # m-element m-element Vector{Matrix{<:Real}} with 2×n Matrix{<:Real}
     all_ij = [[vcat(all_a_ri[i], all_a_ri[j]) for i in 1:m] for j in 1:m]
 
@@ -145,6 +153,11 @@ function MI(a::Matrix{<:Real}; method::String = "inv_ksg", k::Int = 3, base::Rea
         #println(i)
         for j in 1:m
             if i <= j
+                if !(has_scale[i] && has_scale[j])
+                    all_ent_ij[i,j] = NaN
+                    all_ent_ij[j,i] = NaN
+                    continue
+                end
                 kdtree_ij = KDTree(all_ij[i][j])
                 idxs_ij, dists_ij = knn(kdtree_ij, all_ij[i][j], k_1, true)
 
@@ -232,6 +245,13 @@ function CMI(a::Matrix{<:Real}, b::Vector{<:Real}; method::String = "inv_ksg", b
     rz = compute_invariant_measure(b)
     all_a_ri = [reshape(a[:,i]/all_ri[i], 1, n) for i in 1:m]
     b_rz = reshape(b/rz, 1, n)
+    # A variable with fewer than two non-zero values has no scale (NaN measure).
+    # If that is Z, every entry is NaN; if it is a dimension of X, its row and
+    # column are NaN. No tree is built for it either way.
+    if method in ("inv", "inv_ksg") && isnan(rz)
+        return fill(NaN, m, m)
+    end
+    has_scale = [!isnan(r) for r in all_ri]
 
     if method == "inv_ksg"
         z_col = Matrix{Float64}(b_rz)
@@ -240,11 +260,11 @@ function CMI(a::Matrix{<:Real}, b::Vector{<:Real}; method::String = "inv_ksg", b
         # Z, which never changes), so build it once here rather than
         # re-building it -- and the Z-only tree -- for every pair.
         z_tree = KDTree(z_col, Chebyshev())
-        iz_trees = [KDTree(vcat(Matrix{Float64}(all_a_ri[i]), z_col), Chebyshev()) for i in 1:m]
+        iz_trees = [has_scale[i] ? KDTree(vcat(Matrix{Float64}(all_a_ri[i]), z_col), Chebyshev()) : nothing for i in 1:m]
         pairs = [(i, j) for i in 1:m for j in i:m]
         all_cmi_ijz = zeros(m, m)
 
-        compute_pair = (i, j) -> _cmi_fp_pair(
+        compute_pair = (i, j) -> !(has_scale[i] && has_scale[j]) ? NaN : _cmi_fp_pair(
             Matrix{Float64}(all_a_ri[i]), Matrix{Float64}(all_a_ri[j]), z_col,
             iz_trees[i], iz_trees[j], z_tree, k
         )
@@ -302,6 +322,10 @@ function CMI(a::Matrix{<:Real}, b::Vector{<:Real}; method::String = "inv_ksg", b
     # Compute all marginal entropy KNN INV
     all_ent_i = zeros(m)
     for i in 1:m
+        if !has_scale[i]
+            all_ent_i[i] = NaN
+            continue
+        end
         kdtree_i = KDTree(all_a_ri[i])
 
         idxs_i, dists_i = knn(kdtree_i, all_a_ri[i], k_1, true)
@@ -310,7 +334,7 @@ function CMI(a::Matrix{<:Real}, b::Vector{<:Real}; method::String = "inv_ksg", b
 
         log_dists_k_i = []
         for j in dists_k_i
-            if j != 0 #log(0) non defini 
+            if j != 0 #log(0) non defini
                 push!(log_dists_k_i, log(j+noise))
             end
         end
@@ -324,6 +348,10 @@ function CMI(a::Matrix{<:Real}, b::Vector{<:Real}; method::String = "inv_ksg", b
     # Compute all double joint entropy KNN INV
     all_ent_iz = zeros(m)
     for i in 1:m
+        if !has_scale[i]
+            all_ent_iz[i] = NaN
+            continue
+        end
         kdtree_iz = KDTree(all_j_iz[i])
 
         idxs_iz, dists_iz = knn(kdtree_iz, all_j_iz[i], k_1, true)
@@ -348,6 +376,11 @@ function CMI(a::Matrix{<:Real}, b::Vector{<:Real}; method::String = "inv_ksg", b
         #println(i)
         for j in 1:m
             if i <= j
+                if !(has_scale[i] && has_scale[j])
+                    all_ent_ijz[i,j] = NaN
+                    all_ent_ijz[j,i] = NaN
+                    continue
+                end
                 kdtree_ijz = KDTree(all_j_ijz[i][j])
                 idxs_ijz, dists_ijz = knn(kdtree_ijz, all_j_ijz[i][j], k_1, true)
 

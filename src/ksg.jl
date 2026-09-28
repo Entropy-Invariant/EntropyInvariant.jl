@@ -104,6 +104,8 @@ end
 # from the log-distance average -- the same behavior as method="inv" --
 # instead of hard-failing.
 function _entropy_nats_from_normalized(col::Matrix{Float64}, k::Int)::Float64
+    # NaN measure: fewer than two non-zero values, so no scale and no tree to build
+    any(isnan, col) && return NaN
     n = size(col, 2)
     tree = KDTree(col, Chebyshev())
     _, dists = knn(tree, col, k + 1, true)
@@ -142,6 +144,7 @@ end
 # KSG MI in nats, given `x`, `y` already invariant-normalized, each a 1×n matrix
 # (canonical format: one row, n columns).
 function _mi_ksg_from_normalized(x::Matrix{Float64}, y::Matrix{Float64}, k::Int)::Float64
+    (any(isnan, x) || any(isnan, y)) && return NaN
     return _mi_ksg_pair(x, y, KDTree(x, Chebyshev()), KDTree(y, Chebyshev()), k)
 end
 
@@ -179,6 +182,7 @@ end
 # Frenzel-Pompe CMI in nats, given `x`, `y`, `z` already invariant-normalized, each a
 # 1×n matrix (canonical format: one row, n columns).
 function _cmi_fp_from_normalized(x::Matrix{Float64}, y::Matrix{Float64}, z::Matrix{Float64}, k::Int)::Float64
+    (any(isnan, x) || any(isnan, y) || any(isnan, z)) && return NaN
     xz_tree = KDTree(vcat(x, z), Chebyshev())
     yz_tree = KDTree(vcat(y, z), Chebyshev())
     z_tree = KDTree(z, Chebyshev())

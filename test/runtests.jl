@@ -630,3 +630,43 @@ end
     @test occursin("deduplicating", err)
 end
 
+@testset "Fewer than two non-zero values: NaN, not a unit-dependent scale" begin
+    # There is no spacing to measure, so no scale. This used to return 1.0,
+    # which left the column in its own units: entropy(w) and entropy(1000w)
+    # differed by exactly log(1000).
+    rng = MersenneTwister(4)
+    n = 300
+    w = zeros(n); w[7] = 3.0
+    x, y, z = randn(rng, n), randn(rng, n), randn(rng, n)
+
+    @test isnan(EntropyInvariant.compute_invariant_measure(w))
+    @test isnan(EntropyInvariant.compute_invariant_measure(zeros(n)))
+    @test isnan(entropy(w))
+    @test isnan(entropy(1000 .* w))
+    @test isnan(entropy(hcat(w, x)))
+
+    for method in ("inv", "inv_ksg")
+        @test isnan(mutual_information(w, x, method=method))
+        @test isnan(conditional_mutual_information(w, x, z, method=method))
+        @test isnan(conditional_mutual_information(x, y, w, method=method))
+        @test isnan(conditional_entropy(w, x, method=method))
+        @test isnan(redundancy(w, x, z, method=method))
+        @test isnan(synergy(w, x, z, method=method))
+
+        # Matrix fast paths: only the row and column of the scale-less
+        # dimension are NaN; the rest is what it would be without it.
+        mi_mat = EntropyInvariant.MI(hcat(w, x, y), method=method)
+        @test all(isnan, mi_mat[1, :]) && all(isnan, mi_mat[:, 1])
+        @test mi_mat[2:3, 2:3] ≈ EntropyInvariant.MI(hcat(x, y), method=method) atol=1e-12
+
+        cmi_mat = EntropyInvariant.CMI(hcat(w, x, y), z, method=method)
+        @test all(isnan, cmi_mat[1, :]) && all(isnan, cmi_mat[:, 1])
+        @test cmi_mat[2:3, 2:3] ≈ EntropyInvariant.CMI(hcat(x, y), z, method=method) atol=1e-12
+        @test all(isnan, EntropyInvariant.CMI(hcat(x, y), w, method=method))
+    end
+    @test isnan(mutual_information(w, w))
+
+    coalitions = coalition_mutual_information(hcat(w, x), reshape(z, :, 1))
+    @test isnan(coalitions[0x0001]) && isnan(coalitions[0x0003])
+    @test isfinite(coalitions[0x0002])
+end
