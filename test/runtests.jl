@@ -302,8 +302,9 @@ end
 end
 
 @testset "Degenerate invariant measure fails loudly" begin
-    # A column where >=half the non-zero values are exact duplicates, so the
-    # median nearest-neighbor distance is exactly 0.
+    # Duplicates spread over three values: even setting aside the most
+    # frequent one, the rest are all duplicates, so there is no spacing to
+    # measure.
     duplicate_heavy = Float64.(rand(1:3, 200))
     x = rand(200)
 
@@ -630,7 +631,8 @@ end
     @test occursin("deduplicating", err)
 end
 
-@testset "Fewer than two non-zero values: NaN, not a unit-dependent scale" begin
+
+@testset "Fewer than two values occurring once: NaN, not a unit-dependent scale" begin
     # There is no spacing to measure, so no scale. This used to return 1.0,
     # which left the column in its own units: entropy(w) and entropy(1000w)
     # differed by exactly log(1000).
@@ -669,4 +671,64 @@ end
     coalitions = coalition_mutual_information(hcat(w, x), reshape(z, :, 1))
     @test isnan(coalitions[0x0001]) && isnan(coalitions[0x0003])
     @test isfinite(coalitions[0x0002])
+end
+
+@testset "Duplicated values are set aside wherever they sit" begin
+    # A repeated value has a nearest-neighbour distance of 0, whatever the
+    # value is. Setting aside the literal value 0 instead made the scale depend
+    # on location: 0:6 and 1:7 have the same spacing, but r was 6 and 7.
+    @test EntropyInvariant.compute_invariant_measure(Float64.(0:6)) == 7.0
+    @test EntropyInvariant.compute_invariant_measure(Float64.(1:7)) == 7.0
+    @test abs(entropy(Float64.(0:6), k=3) - entropy(Float64.(1:7), k=3)) < 1e-12
+
+    rng = MersenneTwister(5)
+    n = 500
+    make_col(frac_nonzero) = begin
+        col = zeros(n)
+        idx = randperm(rng, n)[1:round(Int, n * frac_nonzero)]
+        col[idx] = rand(rng, length(idx)) .* 10 .+ 1.0
+        col
+    end
+
+    # Sparse data, where the only duplicate is 0: same scale as setting
+    # aside zeros, bit for bit.
+    for frac in (0.2, 0.98)
+        x = make_col(frac)
+        nz = filter(!=(0), x)
+        @test EntropyInvariant.compute_invariant_measure(x) ==
+              length(nz) * EntropyInvariant.median(EntropyInvariant.nn1(sort(nz)))
+    end
+
+    # Any repeated value is set aside, not just 0: here a saturation level too.
+    x = make_col(0.2)
+    x[findall(!=(0), x)[1:10]] .= 11.0
+    once = filter(v -> v != 0 && v != 11.0, x)
+    @test EntropyInvariant.compute_invariant_measure(x) ≈
+          length(once) * EntropyInvariant.median(EntropyInvariant.nn1(sort(once))) rtol=1e-12
+
+    # Affine maps, including reflections and shifts that move the sparse atom.
+    lone_zero = vcat(randn(rng, 999), 0.0)
+    for v in (x, make_col(0.98), lone_zero, Float64.(0:6)), (a, b) in [(1.0, 1.0), (-3.5, 2.0), (1e3, -7.0)]
+        @test EntropyInvariant.compute_invariant_measure(a .* v .+ b) ≈
+              abs(a) * EntropyInvariant.compute_invariant_measure(v) rtol=1e-9
+        @test abs(entropy(a .* v .+ b, k=3) - entropy(v, k=3)) < 1e-8
+    end
+
+    # Celsius readings including a genuine 0.0 agree with Fahrenheit directly.
+    celsius = vcat(randn(rng, 999) .* 5 .+ 2, 0.0)
+    @test abs(entropy(celsius, k=3) - entropy(1.8 .* celsius .+ 32, k=3)) < 1e-8
+
+    # -0.0 == 0.0, so they are duplicates of each other.
+    @test EntropyInvariant.compute_invariant_measure([-0.0, 0.0, 1.0, 2.5, 4.0]) == 3 * 1.5
+
+    # Duplicates spread over many values (discrete or coarsely rounded data)
+    # still fail loudly, wherever the data sits.
+    discrete = Float64.(rand(rng, 1:3, 200))
+    for v in (discrete, discrete .+ 10, -2 .* discrete, round.(randn(rng, 10_000), digits=2))
+        @test_throws ArgumentError EntropyInvariant.compute_invariant_measure(v)
+    end
+
+    # Fewer than two values occurring once: NaN wherever the atom sits.
+    @test isnan(EntropyInvariant.compute_invariant_measure([0.0, 0, 0, 0, 7]))
+    @test isnan(EntropyInvariant.compute_invariant_measure([5.0, 5, 5, 5, 7]))
 end

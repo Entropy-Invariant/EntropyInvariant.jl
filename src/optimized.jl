@@ -68,7 +68,7 @@ function MI(a::Matrix{<:Real}; method::String = "inv_ksg", k::Int = 3, base::Rea
     # below). m-element Vector{Matrix{<:Real}} with 1×n Matrix{<:Real}
     all_ri = [compute_invariant_measure(a[:,i]) for i in 1:m]
     all_a_ri = [reshape(a[:,i]/all_ri[i], 1, n) for i in 1:m]
-    # A dimension with fewer than two non-zero values has no scale (NaN measure):
+    # A dimension with fewer than two values that occur once has no scale (NaN measure):
     # its row and column of the result are NaN, and no tree is built for it.
     has_scale = [!isnan(r) for r in all_ri]
 
@@ -245,7 +245,7 @@ function CMI(a::Matrix{<:Real}, b::Vector{<:Real}; method::String = "inv_ksg", b
     rz = compute_invariant_measure(b)
     all_a_ri = [reshape(a[:,i]/all_ri[i], 1, n) for i in 1:m]
     b_rz = reshape(b/rz, 1, n)
-    # A variable with fewer than two non-zero values has no scale (NaN measure).
+    # A variable with fewer than two values that occur once has no scale (NaN measure).
     # If that is Z, every entry is NaN; if it is a dimension of X, its row and
     # column are NaN. No tree is built for it either way.
     if method in ("inv", "inv_ksg") && isnan(rz)

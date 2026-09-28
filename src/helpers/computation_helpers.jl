@@ -10,21 +10,35 @@ Jaynes' limiting density of discrete points problem. The invariant measure makes
 entropy estimate invariant under scaling and translation transformations.
 
 # Algorithm
-1. Filter out zero values (to handle sparse data)
-2. Sort the non-zero data
+1. Set aside every duplicated value (to handle sparse data)
+2. Sort the values that occur once
 3. Compute nearest-neighbor distances using `nn1()`
 4. Take median of nearest-neighbor distances
 5. Multiply by number of points to get scale-invariant measure
 
 Formula: r_X = median(nearest_neighbor_distances) × num_points
 
+# Duplicated values
+A value that occurs more than once has a nearest-neighbor distance of 0, which says
+nothing about the spacing of the data. In sparse data this is mostly the value 0, but
+the same holds for any repeated value (a saturation level, a fill value), so all of
+them are set aside and `num_points` counts the values that occur once. Which points
+are set aside depends only on repetition, never on where a value sits, so
+r(a*x + b) = |a| * r(x) for any data.
+
+Setting duplicates aside only makes sense when they are concentrated, as in sparse
+data. When they are spread over many values, as in data rounded to a resolution close
+to its spacing, the values that occur once no longer represent the data, so this
+throws instead: after setting aside the most frequent value, the remaining
+duplicates must not outnumber the values that occur once.
+
 # Arguments
 - `data::Vector{<:Real}`: 1D data vector
 
 # Returns
-- `Real`: The invariant measure r_X, or `NaN` when fewer than two non-zero values
-  remain -- there is no spacing to measure, so there is no scale. Every estimator
-  returns `NaN` for a quantity that involves such a dimension.
+- `Real`: The invariant measure r_X, or `NaN` when fewer than two values occur once
+  -- there is no spacing to measure, so there is no scale. Every estimator returns
+  `NaN` for a quantity that involves such a dimension.
 
 # Example
 ```julia
@@ -34,25 +48,44 @@ r_x = compute_invariant_measure(x)
 ```
 """
 function compute_invariant_measure(data::Vector{<:Real})::Real
-    non_zero_data = filter(x -> x != 0, data)
-    if length(non_zero_data) < 2
-        return NaN
+    sorted_data = sort(data)
+    n = length(sorted_data)
+
+    # Runs of equal values in sorted order (== rather than isequal, so -0.0 and
+    # 0.0 count as the same value, just as their distance of 0 does).
+    single_values = eltype(sorted_data)[]
+    num_duplicated = 0
+    largest_group = 0
+    run_start = 1
+    for i in 2:(n + 1)
+        if i > n || sorted_data[i] != sorted_data[run_start]
+            run_length = i - run_start
+            if run_length == 1
+                push!(single_values, sorted_data[run_start])
+            else
+                num_duplicated += run_length
+                largest_group = max(largest_group, run_length)
+            end
+            run_start = i
+        end
     end
-    sorted_data = sort(non_zero_data)
-    nn_distances = nn1(sorted_data)
-    median_distance = median(nn_distances)
-    if median_distance == 0
-        n_unique = length(Base.unique(non_zero_data))
+
+    if num_duplicated - largest_group > length(single_values)
         throw(ArgumentError(
-            "Invariant measure is degenerate (median nearest-neighbor " *
-            "distance is 0): $(length(non_zero_data)) non-zero values but " *
-            "only $n_unique unique among them, so at least half of the " *
-            "sorted non-zero values are exact duplicates. Cannot normalize " *
-            "this dimension -- consider deduplicating, adding jitter, or " *
-            "excluding it from the analysis."
+            "Invariant measure is degenerate: $(num_duplicated) of $n values " *
+            "are exact duplicates, and even setting aside the most frequent " *
+            "value ($largest_group copies), the remaining duplicates outnumber " *
+            "the $(length(single_values)) values that occur once. Cannot " *
+            "normalize this dimension -- consider deduplicating, adding " *
+            "jitter, or excluding it from the analysis."
         ))
     end
-    num_points = length(non_zero_data)
+    if length(single_values) < 2
+        return NaN
+    end
+    nn_distances = nn1(single_values)
+    median_distance = median(nn_distances)
+    num_points = length(single_values)
     return median_distance * num_points
 end
 

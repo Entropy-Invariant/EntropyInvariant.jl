@@ -104,7 +104,7 @@ end
 # from the log-distance average -- the same behavior as method="inv" --
 # instead of hard-failing.
 function _entropy_nats_from_normalized(col::Matrix{Float64}, k::Int)::Float64
-    # NaN measure: fewer than two non-zero values, so no scale and no tree to build
+    # NaN measure: fewer than two values occur once, so no scale and no tree to build
     any(isnan, col) && return NaN
     n = size(col, 2)
     tree = KDTree(col, Chebyshev())
